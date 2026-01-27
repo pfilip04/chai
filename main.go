@@ -1,7 +1,7 @@
 package main
 
 import (
-	"apis/auth"
+	"apis/web_auth"
 	"context"
 	"log"
 	"net/http"
@@ -22,6 +22,7 @@ import (
 CREATE TABLE users (
     id SERIAL PRIMARY KEY,
     username TEXT UNIQUE NOT NULL,
+	email TEXT UNIQUE NOT NULL,
     password_hash TEXT NOT NULL,
     session_token TEXT,
     csrf_token TEXT,
@@ -75,20 +76,20 @@ func main() {
 	// Database instance initialization
 
 	app := &App{DB: dbpool}
-	authService := &auth.AuthService{DB: app.DB}
+	webAuthService := &web_auth.AuthService{DB: app.DB}
 
 	//
 	// Services
 
-	http.HandleFunc("/register", authService.Register)
+	http.HandleFunc("/register", webAuthService.Register)
 
-	http.HandleFunc("/login", authService.Login)
+	http.HandleFunc("/login", webAuthService.Login)
 
-	http.HandleFunc("/protected", authService.Protected)
+	http.HandleFunc("/protected", webAuthService.Protected)
 
-	http.HandleFunc("/logout", authService.Logout)
+	http.HandleFunc("/logout", webAuthService.Logout)
 
-	http.HandleFunc("/delete", authService.DeleteAccount)
+	http.HandleFunc("/delete", webAuthService.DeleteAccount)
 
 	//
 	// Server start

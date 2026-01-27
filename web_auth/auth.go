@@ -1,4 +1,4 @@
-package auth
+package web_auth
 
 import (
 	"fmt"
@@ -21,6 +21,7 @@ type AuthService struct {
 type User struct {
 	ID           int
 	Username     string
+	Email        string
 	PasswordHash string
 	SessionToken string
 	CSRFToken    string
@@ -29,25 +30,35 @@ type User struct {
 
 func (a *AuthService) Register(w http.ResponseWriter, r *http.Request) {
 
-	//
-	// Method check
-
-	if r.Method != http.MethodPost {
-		er := http.StatusMethodNotAllowed
-
-		http.Error(w, "Invalid request method", er)
+	if !checkMethod(w, r, http.MethodPost) {
 		return
 	}
 
 	//
-	// Username and password criteria check
+	// Username, password and email criteria check
 
 	username := r.FormValue("username")
 	password := r.FormValue("password")
-	if len(username) < 8 || len(password) < 8 {
+	email := r.FormValue("email")
+
+	if !isValidUsername(username) {
 		er := http.StatusNotAcceptable
 
-		http.Error(w, "Invalid username/password", er)
+		http.Error(w, "Invalid username", er)
+		return
+	}
+
+	if !isValidPassword(password) {
+		er := http.StatusNotAcceptable
+
+		http.Error(w, "Invalid password", er)
+		return
+	}
+
+	if !isValidEmail(email) {
+		er := http.StatusNotAcceptable
+
+		http.Error(w, "Invalida e-mail", er)
 		return
 	}
 
@@ -55,6 +66,7 @@ func (a *AuthService) Register(w http.ResponseWriter, r *http.Request) {
 	// Password hashing and adding the user to the database
 
 	hashedPassword, err := hashPassword(password)
+
 	if err != nil {
 		er := http.StatusInternalServerError
 
@@ -63,8 +75,8 @@ func (a *AuthService) Register(w http.ResponseWriter, r *http.Request) {
 	}
 
 	_, err = a.DB.Exec(r.Context(),
-		`INSERT INTO users (username, password_hash, created_at) VALUES ($1, $2, NOW())`,
-		username, hashedPassword,
+		`INSERT INTO users (username, email, password_hash, created_at) VALUES ($1, $2, $3, NOW())`,
+		username, email, hashedPassword,
 	)
 
 	if err != nil {
@@ -79,13 +91,7 @@ func (a *AuthService) Register(w http.ResponseWriter, r *http.Request) {
 
 func (a *AuthService) Login(w http.ResponseWriter, r *http.Request) {
 
-	//
-	// Method check
-
-	if r.Method != http.MethodPost {
-		er := http.StatusMethodNotAllowed
-
-		http.Error(w, "Invalid request method", er)
+	if !checkMethod(w, r, http.MethodPost) {
 		return
 	}
 
@@ -94,6 +100,7 @@ func (a *AuthService) Login(w http.ResponseWriter, r *http.Request) {
 
 	username := r.FormValue("username")
 	password := r.FormValue("password")
+
 	var user User
 
 	err := a.DB.QueryRow(r.Context(),
@@ -113,6 +120,7 @@ func (a *AuthService) Login(w http.ResponseWriter, r *http.Request) {
 
 	sessionToken := generateToken(32)
 	csrfToken := generateToken(32)
+
 	_, err = a.DB.Exec(r.Context(),
 		`UPDATE users SET session_token=$1, csrf_token=$2 WHERE id=$3`,
 		sessionToken, csrfToken, user.ID,
@@ -130,6 +138,8 @@ func (a *AuthService) Login(w http.ResponseWriter, r *http.Request) {
 		Value:    sessionToken,
 		Expires:  time.Now().Add(24 * time.Hour),
 		HttpOnly: true,
+		Secure:   true,
+		SameSite: http.SameSiteStrictMode,
 		Path:     "/",
 	})
 
@@ -138,6 +148,8 @@ func (a *AuthService) Login(w http.ResponseWriter, r *http.Request) {
 		Value:    csrfToken,
 		Expires:  time.Now().Add(24 * time.Hour),
 		HttpOnly: false,
+		Secure:   true,
+		SameSite: http.SameSiteStrictMode,
 		Path:     "/",
 	})
 
@@ -146,12 +158,7 @@ func (a *AuthService) Login(w http.ResponseWriter, r *http.Request) {
 
 func (a *AuthService) Protected(w http.ResponseWriter, r *http.Request) {
 
-	//
-	// Method check
-
-	if r.Method != http.MethodPost {
-		er := http.StatusMethodNotAllowed
-		http.Error(w, "Invalid request method", er)
+	if !checkMethod(w, r, http.MethodPost) {
 		return
 	}
 
@@ -164,19 +171,37 @@ func (a *AuthService) Protected(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	username := r.FormValue("username")
+	//
+	//Finding the user through the cookie
+
+	sessionCookie, err := r.Cookie("session_token")
+
+	if err != nil {
+		er := http.StatusUnauthorized
+
+		http.Error(w, "Unauthorized", er)
+		return
+	}
+
+	var username string
+	err = a.DB.QueryRow(r.Context(),
+		`SELECT username FROM users WHERE session_token=$1`,
+		sessionCookie.Value,
+	).Scan(&username)
+
+	if err != nil {
+		er := http.StatusInternalServerError
+
+		http.Error(w, "Server Error", er)
+		return
+	}
+
 	fmt.Fprintf(w, "CSRF validation successful! Welcome, %v!", username)
 }
 
 func (a *AuthService) Logout(w http.ResponseWriter, r *http.Request) {
 
-	//
-	// Method check
-
-	if r.Method != http.MethodPost {
-		er := http.StatusMethodNotAllowed
-
-		http.Error(w, "Invalid request method", er)
+	if !checkMethod(w, r, http.MethodPost) {
 		return
 	}
 
@@ -194,6 +219,7 @@ func (a *AuthService) Logout(w http.ResponseWriter, r *http.Request) {
 	// Clearing the session and CSRF tokens in the database
 
 	sessionCookie, err := r.Cookie("session_token")
+
 	if err != nil {
 		er := http.StatusUnauthorized
 
@@ -218,6 +244,8 @@ func (a *AuthService) Logout(w http.ResponseWriter, r *http.Request) {
 		Value:    "",
 		Expires:  time.Now().Add(-time.Hour),
 		HttpOnly: true,
+		Secure:   true,
+		SameSite: http.SameSiteStrictMode,
 		Path:     "/",
 	})
 
@@ -226,6 +254,8 @@ func (a *AuthService) Logout(w http.ResponseWriter, r *http.Request) {
 		Value:    "",
 		Expires:  time.Now().Add(-time.Hour),
 		HttpOnly: false,
+		Secure:   true,
+		SameSite: http.SameSiteStrictMode,
 		Path:     "/",
 	})
 
@@ -234,13 +264,7 @@ func (a *AuthService) Logout(w http.ResponseWriter, r *http.Request) {
 
 func (a *AuthService) DeleteAccount(w http.ResponseWriter, r *http.Request) {
 
-	//
-	// Method check
-
-	if r.Method != http.MethodPost {
-		er := http.StatusMethodNotAllowed
-
-		http.Error(w, "Invalid request method", er)
+	if !checkMethod(w, r, http.MethodPost) {
 		return
 	}
 
@@ -258,6 +282,7 @@ func (a *AuthService) DeleteAccount(w http.ResponseWriter, r *http.Request) {
 	// Deleting the account from the database based on the session cookie
 
 	sessionCookie, err := r.Cookie("session_token")
+
 	if err != nil {
 		er := http.StatusUnauthorized
 
@@ -292,6 +317,8 @@ func (a *AuthService) DeleteAccount(w http.ResponseWriter, r *http.Request) {
 		Value:    "",
 		Expires:  time.Now().Add(-time.Hour),
 		HttpOnly: true,
+		Secure:   true,
+		SameSite: http.SameSiteStrictMode,
 		Path:     "/",
 	})
 
@@ -300,6 +327,8 @@ func (a *AuthService) DeleteAccount(w http.ResponseWriter, r *http.Request) {
 		Value:    "",
 		Expires:  time.Now().Add(-time.Hour),
 		HttpOnly: false,
+		Secure:   true,
+		SameSite: http.SameSiteStrictMode,
 		Path:     "/",
 	})
 
