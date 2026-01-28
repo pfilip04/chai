@@ -1,4 +1,4 @@
-package web_auth
+package cookie_auth
 
 import (
 	"crypto/rand"

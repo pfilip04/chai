@@ -1,7 +1,7 @@
 package main
 
 import (
-	"apis/web_auth"
+	"apis/cookie_auth"
 	"context"
 	"log"
 	"net/http"
@@ -76,20 +76,20 @@ func main() {
 	// Database instance initialization
 
 	app := &App{DB: dbpool}
-	webAuthService := &web_auth.AuthService{DB: app.DB}
+	cookieAuthService := &cookie_auth.AuthService{DB: app.DB}
 
 	//
 	// Services
 
-	http.HandleFunc("/register", webAuthService.Register)
+	http.HandleFunc("/register", cookieAuthService.Register)
 
-	http.HandleFunc("/login", webAuthService.Login)
+	http.HandleFunc("/login", cookieAuthService.Login)
 
-	http.HandleFunc("/protected", webAuthService.Protected)
+	http.HandleFunc("/protected", cookieAuthService.Protected)
 
-	http.HandleFunc("/logout", webAuthService.Logout)
+	http.HandleFunc("/logout", cookieAuthService.Logout)
 
-	http.HandleFunc("/delete", webAuthService.DeleteAccount)
+	http.HandleFunc("/delete", cookieAuthService.DeleteAccount)
 
 	//
 	// Server start
