@@ -6,7 +6,10 @@ import (
 	"log"
 	"net/http"
 	"os"
+	"time"
 
+	"github.com/go-chi/chi/v5"
+	"github.com/go-chi/chi/v5/middleware"
 	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/joho/godotenv"
 )
@@ -44,10 +47,10 @@ type App struct {
 
 func main() {
 
+	ctx := context.Background()
+
 	//
 	// Loading the env file
-
-	ctx := context.Background()
 
 	err := godotenv.Load("dev.env")
 	if err != nil {
@@ -57,7 +60,10 @@ func main() {
 	//
 	// Connecting to the database
 
-	dbpool, err := pgxpool.New(ctx, os.Getenv("DATABASE_URL"))
+	ctx30, cancel30 := context.WithTimeout(ctx, 30*time.Second)
+	defer cancel30()
+
+	dbpool, err := pgxpool.New(ctx30, os.Getenv("DATABASE_URL"))
 	if err != nil {
 		log.Fatalf("Unable to connect to database: %v\n", err)
 	}
@@ -66,7 +72,10 @@ func main() {
 	//
 	// Database check
 
-	err = dbpool.Ping(ctx)
+	ctx5, cancel5 := context.WithTimeout(ctx, 5*time.Second)
+	defer cancel5()
+
+	err = dbpool.Ping(ctx5)
 	if err != nil {
 		log.Fatalf("Database unreachable: %v\n", err)
 	}
@@ -81,20 +90,36 @@ func main() {
 	//
 	// Services
 
-	http.HandleFunc("/register", cookieAuthService.Register)
+	r := chi.NewRouter()
 
-	http.HandleFunc("/login", cookieAuthService.Login)
+	// A good base middleware stack
 
-	http.HandleFunc("/protected", cookieAuthService.Protected)
+	r.Use(middleware.RequestID)
+	r.Use(middleware.RealIP)
+	r.Use(middleware.Logger)
+	r.Use(middleware.Recoverer)
 
-	http.HandleFunc("/logout", cookieAuthService.Logout)
+	// Set a timeout value on the request context (ctx), that will signal
+	// through ctx.Done() that the request has timed out and further
+	// processing should be stopped.
 
-	http.HandleFunc("/delete", cookieAuthService.DeleteAccount)
+	r.Use(middleware.Timeout(15 * time.Second))
+
+	// Api URLs
+
+	r.Route("/auth", func(r chi.Router) {
+		r.Post("/register", cookieAuthService.Register)
+		r.Post("/login", cookieAuthService.Login)
+		r.Post("/logout", cookieAuthService.Logout)
+		r.Delete("/delete", cookieAuthService.DeleteAccount)
+	})
+
+	r.Get("/protected", cookieAuthService.ViewProtected)
 
 	//
 	// Server start
 
-	if err := http.ListenAndServe(":8080", nil); err != nil {
+	if err := http.ListenAndServe(":8080", r); err != nil {
 		log.Fatalf("Server failed: %v", err)
 	}
 }

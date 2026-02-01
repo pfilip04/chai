@@ -1,6 +1,7 @@
 package cookie_auth
 
 import (
+	"context"
 	"fmt"
 	"net/http"
 	"time"
@@ -18,21 +19,7 @@ type AuthService struct {
 //
 // User entity from the table
 
-type User struct {
-	ID           int
-	Username     string
-	Email        string
-	PasswordHash string
-	SessionToken string
-	CSRFToken    string
-	CreatedAt    time.Time
-}
-
 func (a *AuthService) Register(w http.ResponseWriter, r *http.Request) {
-
-	if !checkMethod(w, r, http.MethodPost) {
-		return
-	}
 
 	//
 	// Username, password and email criteria check
@@ -74,7 +61,10 @@ func (a *AuthService) Register(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	_, err = a.DB.Exec(r.Context(),
+	ctx3, cancel3 := context.WithTimeout(r.Context(), 3*time.Second)
+	defer cancel3()
+
+	_, err = a.DB.Exec(ctx3,
 		`INSERT INTO users (username, email, password_hash, created_at) VALUES ($1, $2, $3, NOW())`,
 		username, email, hashedPassword,
 	)
@@ -82,7 +72,7 @@ func (a *AuthService) Register(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		er := http.StatusConflict
 
-		http.Error(w, "Username already exists", er)
+		http.Error(w, "Error", er)
 		return
 	}
 
@@ -91,24 +81,24 @@ func (a *AuthService) Register(w http.ResponseWriter, r *http.Request) {
 
 func (a *AuthService) Login(w http.ResponseWriter, r *http.Request) {
 
-	if !checkMethod(w, r, http.MethodPost) {
-		return
-	}
-
 	//
 	// Username and password check
 
 	username := r.FormValue("username")
 	password := r.FormValue("password")
 
-	var user User
+	var id int
+	var passwordHash string
 
-	err := a.DB.QueryRow(r.Context(),
+	ctx3a, cancel3a := context.WithTimeout(r.Context(), 3*time.Second)
+	defer cancel3a()
+
+	err := a.DB.QueryRow(ctx3a,
 		`SELECT id, password_hash FROM users WHERE username=$1`,
 		username,
-	).Scan(&user.ID, &user.PasswordHash)
+	).Scan(&id, &passwordHash)
 
-	if err != nil || !checkPasswordHash(password, user.PasswordHash) {
+	if err != nil || !checkPasswordHash(password, passwordHash) {
 		er := http.StatusUnauthorized
 
 		http.Error(w, "Invalid username or password", er)
@@ -121,9 +111,12 @@ func (a *AuthService) Login(w http.ResponseWriter, r *http.Request) {
 	sessionToken := generateToken(32)
 	csrfToken := generateToken(32)
 
-	_, err = a.DB.Exec(r.Context(),
+	ctx3b, cancel3b := context.WithTimeout(r.Context(), 3*time.Second)
+	defer cancel3b()
+
+	_, err = a.DB.Exec(ctx3b,
 		`UPDATE users SET session_token=$1, csrf_token=$2 WHERE id=$3`,
-		sessionToken, csrfToken, user.ID,
+		sessionToken, csrfToken, id,
 	)
 
 	if err != nil {
@@ -156,16 +149,12 @@ func (a *AuthService) Login(w http.ResponseWriter, r *http.Request) {
 	fmt.Fprintln(w, "User login successful!")
 }
 
-func (a *AuthService) Protected(w http.ResponseWriter, r *http.Request) {
-
-	if !checkMethod(w, r, http.MethodPost) {
-		return
-	}
+func (a *AuthService) ViewProtected(w http.ResponseWriter, r *http.Request) {
 
 	//
 	// Validating the user authorization tokens
 
-	if err := a.Authorize(r); err != nil {
+	if err := a.SoftAuthorize(r); err != nil {
 		er := http.StatusUnauthorized
 		http.Error(w, "Unauthorized", er)
 		return
@@ -184,7 +173,11 @@ func (a *AuthService) Protected(w http.ResponseWriter, r *http.Request) {
 	}
 
 	var username string
-	err = a.DB.QueryRow(r.Context(),
+
+	ctx3, cancel3 := context.WithTimeout(r.Context(), 3*time.Second)
+	defer cancel3()
+
+	err = a.DB.QueryRow(ctx3,
 		`SELECT username FROM users WHERE session_token=$1`,
 		sessionCookie.Value,
 	).Scan(&username)
@@ -196,19 +189,15 @@ func (a *AuthService) Protected(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	fmt.Fprintf(w, "CSRF validation successful! Welcome, %v!", username)
+	fmt.Fprintf(w, "Cookie validation successful! Welcome, %v!", username)
 }
 
 func (a *AuthService) Logout(w http.ResponseWriter, r *http.Request) {
 
-	if !checkMethod(w, r, http.MethodPost) {
-		return
-	}
-
 	//
 	// Validating the user authorization tokens
 
-	if err := a.Authorize(r); err != nil {
+	if err := a.HardAuthorize(r); err != nil {
 		er := http.StatusUnauthorized
 
 		http.Error(w, "Unauthorized", er)
@@ -227,7 +216,10 @@ func (a *AuthService) Logout(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	_, err = a.DB.Exec(r.Context(),
+	ctx3, cancel3 := context.WithTimeout(r.Context(), 3*time.Second)
+	defer cancel3()
+
+	_, err = a.DB.Exec(ctx3,
 		`UPDATE users SET session_token=NULL, csrf_token=NULL WHERE session_token=$1`,
 		sessionCookie.Value,
 	)
@@ -264,14 +256,10 @@ func (a *AuthService) Logout(w http.ResponseWriter, r *http.Request) {
 
 func (a *AuthService) DeleteAccount(w http.ResponseWriter, r *http.Request) {
 
-	if !checkMethod(w, r, http.MethodPost) {
-		return
-	}
-
 	//
 	// Validating the user authorization tokens
 
-	if err := a.Authorize(r); err != nil {
+	if err := a.HardAuthorize(r); err != nil {
 		er := http.StatusUnauthorized
 
 		http.Error(w, "Unauthorized", er)
@@ -290,7 +278,10 @@ func (a *AuthService) DeleteAccount(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	cmd, err := a.DB.Exec(r.Context(),
+	ctx3, cancel3 := context.WithTimeout(r.Context(), 3*time.Second)
+	defer cancel3()
+
+	cmd, err := a.DB.Exec(ctx3,
 		`DELETE FROM users WHERE session_token = $1`,
 		sessionCookie.Value,
 	)

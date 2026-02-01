@@ -3,26 +3,11 @@ package cookie_auth
 import (
 	"crypto/rand"
 	"encoding/base64"
-	"log"
-	"net/http"
+	"fmt"
 	"net/mail"
 
 	"golang.org/x/crypto/bcrypt"
 )
-
-//
-//Method check
-
-func checkMethod(w http.ResponseWriter, r *http.Request, method string) bool {
-	if r.Method != method {
-		er := http.StatusMethodNotAllowed
-
-		http.Error(w, "Invalid request Method", er)
-		return false
-	}
-
-	return true
-}
 
 //
 //Username feng-shui
@@ -123,7 +108,7 @@ func generateToken(length int) string {
 
 	bytes := make([]byte, length)
 	if _, err := rand.Read(bytes); err != nil {
-		log.Fatalf("Failed to generate token: %v", err)
+		fmt.Printf("Failed to generate token: %v", err)
 	}
 	return base64.URLEncoding.EncodeToString(bytes)
 }
