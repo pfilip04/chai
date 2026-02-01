@@ -21,7 +21,7 @@ func (a *AuthService) SoftAuthorize(r *http.Request) error {
 		return AuthError
 	}
 
-	sessionToken := st.Value
+	hashedSessionToken := hashToken(st.Value)
 
 	var userID int
 
@@ -30,7 +30,7 @@ func (a *AuthService) SoftAuthorize(r *http.Request) error {
 
 	err = a.DB.QueryRow(ctx3,
 		`SELECT id FROM users WHERE session_token=$1`,
-		sessionToken,
+		hashedSessionToken,
 	).Scan(&userID)
 
 	if err != nil {
@@ -48,28 +48,30 @@ func (a *AuthService) HardAuthorize(r *http.Request) error {
 	if err != nil || st.Value == "" {
 		return AuthError
 	}
-	sessionToken := st.Value
+
+	hashedSessionToken := hashToken(st.Value)
 
 	csrfToken := r.Header.Get("X-CSRF-Token")
+
 	if csrfToken == "" {
 		return AuthError
 	}
 
-	var dbCSRF string
+	var dbCsrfToken string
 
 	ctx3, cancel3 := context.WithTimeout(r.Context(), 3*time.Second)
 	defer cancel3()
 
 	err = a.DB.QueryRow(ctx3,
 		`SELECT csrf_token FROM users WHERE session_token=$1`,
-		sessionToken,
-	).Scan(&dbCSRF)
+		hashedSessionToken,
+	).Scan(&dbCsrfToken)
 
 	if err != nil {
 		return AuthError
 	}
 
-	if dbCSRF != csrfToken {
+	if !checkToken(csrfToken, dbCsrfToken) {
 		return AuthError
 	}
 

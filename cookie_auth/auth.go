@@ -16,8 +16,9 @@ type AuthService struct {
 	DB *pgxpool.Pool
 }
 
-//
-// User entity from the table
+// Timeout
+
+const dbTimeout = 3 * time.Second
 
 func (a *AuthService) Register(w http.ResponseWriter, r *http.Request) {
 
@@ -61,7 +62,7 @@ func (a *AuthService) Register(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	ctx3, cancel3 := context.WithTimeout(r.Context(), 3*time.Second)
+	ctx3, cancel3 := context.WithTimeout(r.Context(), dbTimeout)
 	defer cancel3()
 
 	_, err = a.DB.Exec(ctx3,
@@ -72,7 +73,7 @@ func (a *AuthService) Register(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		er := http.StatusConflict
 
-		http.Error(w, "Error", er)
+		http.Error(w, "Username or e-mail taken", er)
 		return
 	}
 
@@ -90,7 +91,7 @@ func (a *AuthService) Login(w http.ResponseWriter, r *http.Request) {
 	var id int
 	var passwordHash string
 
-	ctx3a, cancel3a := context.WithTimeout(r.Context(), 3*time.Second)
+	ctx3a, cancel3a := context.WithTimeout(r.Context(), dbTimeout)
 	defer cancel3a()
 
 	err := a.DB.QueryRow(ctx3a,
@@ -108,15 +109,33 @@ func (a *AuthService) Login(w http.ResponseWriter, r *http.Request) {
 	//
 	// Generating and assigning session, csrf tokens to the user
 
-	sessionToken := generateToken(32)
-	csrfToken := generateToken(32)
+	sessionToken, err := generateToken(32)
 
-	ctx3b, cancel3b := context.WithTimeout(r.Context(), 3*time.Second)
+	if err != nil {
+		er := http.StatusInternalServerError
+
+		http.Error(w, "Server error", er)
+		return
+	}
+
+	csrfToken, err := generateToken(32)
+
+	if err != nil {
+		er := http.StatusInternalServerError
+
+		http.Error(w, "Server error", er)
+		return
+	}
+
+	hashedSessionToken := hashToken(sessionToken)
+	hashedCsrfToken := hashToken(csrfToken)
+
+	ctx3b, cancel3b := context.WithTimeout(r.Context(), dbTimeout)
 	defer cancel3b()
 
 	_, err = a.DB.Exec(ctx3b,
 		`UPDATE users SET session_token=$1, csrf_token=$2 WHERE id=$3`,
-		sessionToken, csrfToken, id,
+		hashedSessionToken, hashedCsrfToken, id,
 	)
 
 	if err != nil {
@@ -172,14 +191,16 @@ func (a *AuthService) ViewProtected(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	hashedSessionToken := hashToken(sessionCookie.Value)
+
 	var username string
 
-	ctx3, cancel3 := context.WithTimeout(r.Context(), 3*time.Second)
+	ctx3, cancel3 := context.WithTimeout(r.Context(), dbTimeout)
 	defer cancel3()
 
 	err = a.DB.QueryRow(ctx3,
 		`SELECT username FROM users WHERE session_token=$1`,
-		sessionCookie.Value,
+		hashedSessionToken,
 	).Scan(&username)
 
 	if err != nil {
@@ -216,12 +237,14 @@ func (a *AuthService) Logout(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	ctx3, cancel3 := context.WithTimeout(r.Context(), 3*time.Second)
+	hashedSessionToken := hashToken(sessionCookie.Value)
+
+	ctx3, cancel3 := context.WithTimeout(r.Context(), dbTimeout)
 	defer cancel3()
 
 	_, err = a.DB.Exec(ctx3,
 		`UPDATE users SET session_token=NULL, csrf_token=NULL WHERE session_token=$1`,
-		sessionCookie.Value,
+		hashedSessionToken,
 	)
 
 	if err != nil {
@@ -278,12 +301,14 @@ func (a *AuthService) DeleteAccount(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	ctx3, cancel3 := context.WithTimeout(r.Context(), 3*time.Second)
+	hashedSessionToken := hashToken(sessionCookie.Value)
+
+	ctx3, cancel3 := context.WithTimeout(r.Context(), dbTimeout)
 	defer cancel3()
 
 	cmd, err := a.DB.Exec(ctx3,
 		`DELETE FROM users WHERE session_token = $1`,
-		sessionCookie.Value,
+		hashedSessionToken,
 	)
 
 	if err != nil {
@@ -296,7 +321,7 @@ func (a *AuthService) DeleteAccount(w http.ResponseWriter, r *http.Request) {
 	if cmd.RowsAffected() == 0 {
 		er := http.StatusUnauthorized
 
-		http.Error(w, "User not found", er)
+		http.Error(w, "Unauthorized", er)
 		return
 	}
 

@@ -2,7 +2,10 @@ package cookie_auth
 
 import (
 	"crypto/rand"
+	"crypto/sha256"
+	"crypto/subtle"
 	"encoding/base64"
+	"encoding/hex"
 	"fmt"
 	"net/mail"
 
@@ -92,9 +95,6 @@ func hashPassword(password string) (string, error) {
 	return string(bytes), err
 }
 
-//
-// Password checking
-
 func checkPasswordHash(password string, hash string) bool {
 
 	err := bcrypt.CompareHashAndPassword([]byte(hash), []byte(password))
@@ -104,11 +104,25 @@ func checkPasswordHash(password string, hash string) bool {
 //
 // Token generation
 
-func generateToken(length int) string {
+func generateToken(length int) (string, error) {
 
 	bytes := make([]byte, length)
 	if _, err := rand.Read(bytes); err != nil {
 		fmt.Printf("Failed to generate token: %v", err)
+		return "", err
 	}
-	return base64.URLEncoding.EncodeToString(bytes)
+	return base64.URLEncoding.EncodeToString(bytes), nil
+}
+
+//
+// Token hashing
+
+func hashToken(token string) string {
+	sum := sha256.Sum256([]byte(token))
+	return hex.EncodeToString(sum[:])
+}
+
+func checkToken(token string, hash string) bool {
+	hashedToken := hashToken(token)
+	return subtle.ConstantTimeCompare([]byte(hashedToken), []byte(hash)) == 1
 }

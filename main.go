@@ -16,7 +16,6 @@ import (
 
 ////
 ////
-////
 
 // Data Table
 
@@ -34,7 +33,6 @@ CREATE TABLE users (
 
 */
 
-////
 ////
 ////
 
@@ -90,36 +88,46 @@ func main() {
 	//
 	// Services
 
-	r := chi.NewRouter()
+	router := chi.NewRouter()
 
 	// A good base middleware stack
 
-	r.Use(middleware.RequestID)
-	r.Use(middleware.RealIP)
-	r.Use(middleware.Logger)
-	r.Use(middleware.Recoverer)
+	router.Use(middleware.RequestID)
+	router.Use(middleware.RealIP)
+	router.Use(middleware.Logger)
+	router.Use(middleware.Recoverer)
 
 	// Set a timeout value on the request context (ctx), that will signal
 	// through ctx.Done() that the request has timed out and further
 	// processing should be stopped.
 
-	r.Use(middleware.Timeout(15 * time.Second))
+	router.Use(middleware.Timeout(15 * time.Second))
+
+	router.Use(middleware.RequestSize(1 << 20))
 
 	// Api URLs
 
-	r.Route("/auth", func(r chi.Router) {
+	router.Route("/auth", func(r chi.Router) {
 		r.Post("/register", cookieAuthService.Register)
 		r.Post("/login", cookieAuthService.Login)
 		r.Post("/logout", cookieAuthService.Logout)
 		r.Delete("/delete", cookieAuthService.DeleteAccount)
 	})
 
-	r.Get("/protected", cookieAuthService.ViewProtected)
+	router.Get("/protected", cookieAuthService.ViewProtected)
 
 	//
 	// Server start
 
-	if err := http.ListenAndServe(":8080", r); err != nil {
+	server := &http.Server{
+		Addr:              ":8080",
+		Handler:           router,
+		ReadTimeout:       10 * time.Second,
+		ReadHeaderTimeout: 5 * time.Second,
+		WriteTimeout:      10 * time.Second,
+		IdleTimeout:       60 * time.Second,
+	}
+	if err := server.ListenAndServe(); err != nil {
 		log.Fatalf("Server failed: %v", err)
 	}
 }
