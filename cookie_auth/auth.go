@@ -20,6 +20,12 @@ type AuthService struct {
 
 const dbTimeout = 3 * time.Second
 
+//
+//
+// REGISTER
+//
+//
+
 func (a *AuthService) Register(w http.ResponseWriter, r *http.Request) {
 
 	//
@@ -79,6 +85,12 @@ func (a *AuthService) Register(w http.ResponseWriter, r *http.Request) {
 
 	fmt.Fprintln(w, "User registration successful!")
 }
+
+//
+//
+// LOGIN
+//
+//
 
 func (a *AuthService) Login(w http.ResponseWriter, r *http.Request) {
 
@@ -168,6 +180,12 @@ func (a *AuthService) Login(w http.ResponseWriter, r *http.Request) {
 	fmt.Fprintln(w, "User login successful!")
 }
 
+//
+//
+// VIEWPROTECTED
+//
+//
+
 func (a *AuthService) ViewProtected(w http.ResponseWriter, r *http.Request) {
 
 	//
@@ -212,6 +230,12 @@ func (a *AuthService) ViewProtected(w http.ResponseWriter, r *http.Request) {
 
 	fmt.Fprintf(w, "Cookie validation successful! Welcome, %v!", username)
 }
+
+//
+//
+// LOGOUT
+//
+//
 
 func (a *AuthService) Logout(w http.ResponseWriter, r *http.Request) {
 
@@ -276,6 +300,12 @@ func (a *AuthService) Logout(w http.ResponseWriter, r *http.Request) {
 
 	fmt.Fprintln(w, "User logout successful")
 }
+
+//
+//
+// DELETE
+//
+//
 
 func (a *AuthService) DeleteAccount(w http.ResponseWriter, r *http.Request) {
 

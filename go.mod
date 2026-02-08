@@ -1,4 +1,4 @@
-module apis
+module github.com/pfilip04/chai
 
 go 1.25.5
 
