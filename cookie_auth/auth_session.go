@@ -5,6 +5,8 @@ import (
 	"errors"
 	"net/http"
 	"time"
+
+	"github.com/pfilip04/chai/utils"
 )
 
 var AuthError = errors.New("Unauthorized")
@@ -21,7 +23,7 @@ func (a *AuthService) SoftAuthorize(r *http.Request) error {
 		return AuthError
 	}
 
-	hashedSessionToken := hashToken(st.Value)
+	hashedSessionToken := utils.HashToken(st.Value)
 
 	var userID int
 
@@ -49,7 +51,7 @@ func (a *AuthService) HardAuthorize(r *http.Request) error {
 		return AuthError
 	}
 
-	hashedSessionToken := hashToken(st.Value)
+	hashedSessionToken := utils.HashToken(st.Value)
 
 	csrfToken := r.Header.Get("X-CSRF-Token")
 
@@ -71,7 +73,7 @@ func (a *AuthService) HardAuthorize(r *http.Request) error {
 		return AuthError
 	}
 
-	if !checkToken(csrfToken, dbCsrfToken) {
+	if !utils.CheckToken(csrfToken, dbCsrfToken) {
 		return AuthError
 	}
 

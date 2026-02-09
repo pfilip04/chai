@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"github.com/jackc/pgx/v5/pgxpool"
+	"github.com/pfilip04/chai/utils"
 )
 
 //
@@ -35,21 +36,21 @@ func (a *AuthService) Register(w http.ResponseWriter, r *http.Request) {
 	password := r.FormValue("password")
 	email := r.FormValue("email")
 
-	if !isValidUsername(username) {
+	if !utils.IsValidUsername(username) {
 		er := http.StatusNotAcceptable
 
 		http.Error(w, "Invalid username", er)
 		return
 	}
 
-	if !isValidPassword(password) {
+	if !utils.IsValidPassword(password) {
 		er := http.StatusNotAcceptable
 
 		http.Error(w, "Invalid password", er)
 		return
 	}
 
-	if !isValidEmail(email) {
+	if !utils.IsValidEmail(email) {
 		er := http.StatusNotAcceptable
 
 		http.Error(w, "Invalida e-mail", er)
@@ -59,7 +60,7 @@ func (a *AuthService) Register(w http.ResponseWriter, r *http.Request) {
 	//
 	// Password hashing and adding the user to the database
 
-	hashedPassword, err := hashPassword(password)
+	hashedPassword, err := utils.HashPassword(password)
 
 	if err != nil {
 		er := http.StatusInternalServerError
@@ -111,7 +112,7 @@ func (a *AuthService) Login(w http.ResponseWriter, r *http.Request) {
 		username,
 	).Scan(&id, &passwordHash)
 
-	if err != nil || !checkPasswordHash(password, passwordHash) {
+	if err != nil || !utils.CheckPasswordHash(password, passwordHash) {
 		er := http.StatusUnauthorized
 
 		http.Error(w, "Invalid username or password", er)
@@ -121,7 +122,7 @@ func (a *AuthService) Login(w http.ResponseWriter, r *http.Request) {
 	//
 	// Generating and assigning session, csrf tokens to the user
 
-	sessionToken, err := generateToken(32)
+	sessionToken, err := utils.GenerateToken(32)
 
 	if err != nil {
 		er := http.StatusInternalServerError
@@ -130,7 +131,7 @@ func (a *AuthService) Login(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	csrfToken, err := generateToken(32)
+	csrfToken, err := utils.GenerateToken(32)
 
 	if err != nil {
 		er := http.StatusInternalServerError
@@ -139,8 +140,8 @@ func (a *AuthService) Login(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	hashedSessionToken := hashToken(sessionToken)
-	hashedCsrfToken := hashToken(csrfToken)
+	hashedSessionToken := utils.HashToken(sessionToken)
+	hashedCsrfToken := utils.HashToken(csrfToken)
 
 	ctx3b, cancel3b := context.WithTimeout(r.Context(), dbTimeout)
 	defer cancel3b()
@@ -209,7 +210,7 @@ func (a *AuthService) ViewProtected(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	hashedSessionToken := hashToken(sessionCookie.Value)
+	hashedSessionToken := utils.HashToken(sessionCookie.Value)
 
 	var username string
 
@@ -261,7 +262,7 @@ func (a *AuthService) Logout(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	hashedSessionToken := hashToken(sessionCookie.Value)
+	hashedSessionToken := utils.HashToken(sessionCookie.Value)
 
 	ctx3, cancel3 := context.WithTimeout(r.Context(), dbTimeout)
 	defer cancel3()
@@ -331,7 +332,7 @@ func (a *AuthService) DeleteAccount(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	hashedSessionToken := hashToken(sessionCookie.Value)
+	hashedSessionToken := utils.HashToken(sessionCookie.Value)
 
 	ctx3, cancel3 := context.WithTimeout(r.Context(), dbTimeout)
 	defer cancel3()
