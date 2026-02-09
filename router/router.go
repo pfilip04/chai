@@ -9,7 +9,7 @@ import (
 	"github.com/jackc/pgx/v5/pgxpool"
 )
 
-func NewRouter(envfile string, timeout time.Duration, reqsize int64) (chi.Router, *pgxpool.Pool, error) {
+func NewRouter(envfile string, timeout time.Duration, cookieQtimeout time.Duration, jwtQtimeout time.Duration, reqsize int64) (chi.Router, *pgxpool.Pool, error) {
 
 	//
 	// Load env
@@ -32,6 +32,8 @@ func NewRouter(envfile string, timeout time.Duration, reqsize int64) (chi.Router
 	// App init
 
 	app := NewApp(dbpool)
+
+	app.InitCookie(cookieQtimeout)
 
 	//
 	// Router init

@@ -7,7 +7,10 @@ import (
 	"encoding/base64"
 	"encoding/hex"
 	"fmt"
+	"strconv"
+	"time"
 
+	"github.com/golang-jwt/jwt/v5"
 	"golang.org/x/crypto/bcrypt"
 )
 
@@ -50,4 +53,21 @@ func HashToken(token string) string {
 func CheckToken(token string, hash string) bool {
 	hashedToken := HashToken(token)
 	return subtle.ConstantTimeCompare([]byte(hashedToken), []byte(hash)) == 1
+}
+
+//
+// JWT generation
+
+func CreateJWT(secret []byte, userID int, specialname string, expiration time.Duration) (string, error) {
+
+	claims := jwt.MapClaims{
+		"sub": strconv.Itoa(userID),
+		"iss": specialname,
+		"iat": time.Now().Unix(),
+		"exp": time.Now().Add(expiration).Unix(),
+	}
+
+	token := jwt.NewWithClaims(jwt.SigningMethodHS256, claims)
+
+	return token.SignedString(secret)
 }

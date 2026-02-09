@@ -30,9 +30,6 @@ CREATE TABLE users (
 ////
 ////
 
-//
-// Database configuration
-
 func main() {
 
 	//
@@ -40,12 +37,14 @@ func main() {
 
 	envfile := "dev.env"
 	timeout := 15 * time.Second
+	cookieQtimeout := 3 * time.Second
+	jwtQtimeout := 3 * time.Second
 	var reqsize int64 = 1 << 20
 
 	//
 	// Router initialization
 
-	r, dbpool, err := router.NewRouter(envfile, timeout, reqsize)
+	r, dbpool, err := router.NewRouter(envfile, timeout, cookieQtimeout, jwtQtimeout, reqsize)
 	if err != nil {
 		log.Fatalf("Failed: %v", err)
 	}

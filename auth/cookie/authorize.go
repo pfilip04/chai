@@ -1,4 +1,4 @@
-package cookie_auth
+package cookie
 
 import (
 	"context"
@@ -16,11 +16,11 @@ var AuthError = errors.New("Unauthorized")
 
 // Auth for GET
 
-func (a *AuthService) SoftAuthorize(r *http.Request) error {
+func (a *CookieAuth) SoftAuthorize(r *http.Request) (int, error) {
 
 	st, err := r.Cookie("session_token")
 	if err != nil || st.Value == "" {
-		return AuthError
+		return 0, AuthError
 	}
 
 	hashedSessionToken := utils.HashToken(st.Value)
@@ -36,19 +36,19 @@ func (a *AuthService) SoftAuthorize(r *http.Request) error {
 	).Scan(&userID)
 
 	if err != nil {
-		return AuthError
+		return 0, AuthError
 	}
 
-	return nil
+	return userID, nil
 }
 
 // Auth for POST/PATCH/PUT/DELETE...
 
-func (a *AuthService) HardAuthorize(r *http.Request) error {
+func (a *CookieAuth) HardAuthorize(r *http.Request) (int, error) {
 
 	st, err := r.Cookie("session_token")
 	if err != nil || st.Value == "" {
-		return AuthError
+		return 0, AuthError
 	}
 
 	hashedSessionToken := utils.HashToken(st.Value)
@@ -56,26 +56,27 @@ func (a *AuthService) HardAuthorize(r *http.Request) error {
 	csrfToken := r.Header.Get("X-CSRF-Token")
 
 	if csrfToken == "" {
-		return AuthError
+		return 0, AuthError
 	}
 
 	var dbCsrfToken string
+	var userID int
 
 	ctx3, cancel3 := context.WithTimeout(r.Context(), 3*time.Second)
 	defer cancel3()
 
 	err = a.DB.QueryRow(ctx3,
-		`SELECT csrf_token FROM users WHERE session_token=$1`,
+		`SELECT id, csrf_token FROM users WHERE session_token=$1`,
 		hashedSessionToken,
-	).Scan(&dbCsrfToken)
+	).Scan(&userID, &dbCsrfToken)
 
 	if err != nil {
-		return AuthError
+		return 0, AuthError
 	}
 
 	if !utils.CheckToken(csrfToken, dbCsrfToken) {
-		return AuthError
+		return 0, AuthError
 	}
 
-	return nil
+	return userID, nil
 }

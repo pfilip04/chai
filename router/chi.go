@@ -28,14 +28,12 @@ func (app *App) NewChiRouter(timeout time.Duration, reqsize int64) chi.Router {
 
 	// Api URLs
 
-	router.Route("/auth", func(r chi.Router) {
-		r.Post("/register", app.CookieDB.Register)
-		r.Post("/login", app.CookieDB.Login)
-		r.Post("/logout", app.CookieDB.Logout)
-		r.Delete("/delete", app.CookieDB.DeleteAccount)
+	router.Route("/web", func(r chi.Router) {
+		r.Post("/register", app.Cookie.Register)
+		r.Post("/login", app.Cookie.Login)
+		r.Post("/logout", app.Cookie.Logout)
+		r.Delete("/delete", app.Cookie.Delete)
 	})
-
-	router.Get("/protected", app.CookieDB.ViewProtected)
 
 	return router
 }
