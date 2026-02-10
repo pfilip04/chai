@@ -1,20 +1,30 @@
 package router
 
 import (
+	"errors"
 	"log"
-	"time"
+	"os"
 
 	"github.com/go-chi/chi/v5"
-
 	"github.com/jackc/pgx/v5/pgxpool"
+
+	"github.com/pfilip04/chai/config"
 )
 
-func NewRouter(envfile string, timeout time.Duration, cookieQtimeout time.Duration, jwtQtimeout time.Duration, reqsize int64) (chi.Router, *pgxpool.Pool, error) {
+func NewRouter() (chi.Router, *pgxpool.Pool, error) {
+
+	//
+	// Load the config
+
+	cfg, err := config.Load("config/config.json")
+	if err != nil {
+		return nil, nil, err
+	}
 
 	//
 	// Load env
 
-	if err := LoadEnv(envfile); err != nil {
+	if err := LoadEnv(cfg.Env); err != nil {
 		return nil, nil, err
 	}
 
@@ -31,14 +41,21 @@ func NewRouter(envfile string, timeout time.Duration, cookieQtimeout time.Durati
 	//
 	// App init
 
+	secret := os.Getenv("SECRET_KEY")
+	if secret == "" {
+		return nil, nil, errors.New("SECRET_KEY IS NOT SET")
+	}
+
 	app := NewApp(dbpool)
 
-	app.InitCookie(cookieQtimeout)
+	app.InitCookie(cfg.Cookie)
+
+	app.InitJWT(cfg.JWT, secret)
 
 	//
 	// Router init
 
-	router := app.NewChiRouter(timeout, reqsize)
+	router := app.NewChiRouter(cfg.Router)
 
 	return router, dbpool, nil
 }

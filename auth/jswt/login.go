@@ -2,7 +2,7 @@ package jswt
 
 import (
 	"context"
-	"fmt"
+	"encoding/json"
 	"net/http"
 
 	"github.com/pfilip04/chai/utils"
@@ -33,5 +33,24 @@ func (j *JWTAuth) Login(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "Invalid username or password", er)
 		return
 	}
-	fmt.Fprintln(w, "User login successful!")
+
+	tokenString, err := utils.CreateJWT(j.secret, id, j.specialname, j.expiration)
+	if err != nil {
+		http.Error(w, "Failed to create token", http.StatusInternalServerError)
+		return
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	w.Header().Set("Authorization", "Bearer "+tokenString)
+
+	resp := struct {
+		Token string `json:"token"`
+	}{
+		Token: tokenString,
+	}
+
+	if err := json.NewEncoder(w).Encode(resp); err != nil {
+		http.Error(w, "Failed to encode response", http.StatusInternalServerError)
+		return
+	}
 }

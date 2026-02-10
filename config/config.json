@@ -1,0 +1,18 @@
+{
+    "env": "dev.env",
+
+    "router": {
+        "timeout": "3s",
+        "requestSize": 1048576
+    },
+
+    "jwt": {
+        "queryTimeout": "3s",
+        "expiration": "15m",
+        "specialName": "chai_auth_token"
+    },
+    
+    "cookie": {
+        "queryTimeout": "3s"
+    }
+}

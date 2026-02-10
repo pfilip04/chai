@@ -7,6 +7,7 @@ import (
 
 	"github.com/pfilip04/chai/auth/cookie"
 	"github.com/pfilip04/chai/auth/jswt"
+	"github.com/pfilip04/chai/config"
 )
 
 type App struct {
@@ -19,28 +20,22 @@ func NewApp(dbpool *pgxpool.Pool) *App {
 
 	return &App{
 		DB: dbpool,
-		Cookie: &cookie.CookieAuth{
-			DB: dbpool,
-		},
-		JWT: &jswt.JWTAuth{
-			DB: dbpool,
-		},
 	}
 }
 
-func (a *App) InitJWT(queryTimeout time.Duration, secret []byte, specialname string, expiration time.Duration) {
-	a.JWT = jswt.New(
+func (a *App) InitCookie(cookiecfg config.CookieConfig) {
+	a.Cookie = cookie.New(
 		a.DB,
-		queryTimeout,
-		secret,
-		specialname,
-		expiration,
+		time.Duration(cookiecfg.QueryTimeout),
 	)
 }
 
-func (a *App) InitCookie(queryTimeout time.Duration) {
-	a.Cookie = cookie.New(
+func (a *App) InitJWT(jwtcfg config.JWTConfig, secret string) {
+	a.JWT = jswt.New(
 		a.DB,
-		queryTimeout,
+		time.Duration(jwtcfg.QueryTimeout),
+		[]byte(secret),
+		jwtcfg.SpecialName,
+		time.Duration(jwtcfg.Expiration),
 	)
 }
