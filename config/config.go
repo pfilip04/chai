@@ -7,7 +7,12 @@ import (
 )
 
 type Config struct {
-	Env    string       `json:"env"`
+	Env        string `json:"env"`
+	Db         string `json:"db"`
+	HandlerCfg string `json:"handler-config"`
+}
+
+type HandlerConfig struct {
 	Router RouterConfig `json:"router"`
 	Cookie CookieConfig `json:"cookie"`
 	JWT    JWTConfig    `json:"jwt"`
@@ -45,10 +50,11 @@ type JWTConfig struct {
 	SpecialName  string   `json:"specialName"`
 }
 
-func Load(path string) (Config, error) {
-	var cfg Config
+func Load[T any](path string) (T, error) {
+	var cfg T
 
 	data, err := os.ReadFile(path)
+
 	if err != nil {
 		return cfg, err
 	}

@@ -40,6 +40,8 @@ func (app *App) NewChiRouter(routercfg config.RouterConfig) chi.Router {
 	router.Route("/mobile", func(r chi.Router) {
 		r.Post("/register", app.JWT.Register)
 		r.Post("/login", app.JWT.Login)
+		r.Post("/logout", app.JWT.Logout)
+		r.Delete("/delete", app.JWT.Delete)
 	})
 
 	return router

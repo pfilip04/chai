@@ -18,23 +18,20 @@ func (j *JWTAuth) Register(w http.ResponseWriter, r *http.Request) {
 	email := r.FormValue("email")
 
 	if !utils.IsValidUsername(username) {
-		er := http.StatusNotAcceptable
 
-		http.Error(w, "Invalid username", er)
+		http.Error(w, "Invalid username", http.StatusNotAcceptable)
 		return
 	}
 
 	if !utils.IsValidPassword(password) {
-		er := http.StatusNotAcceptable
 
-		http.Error(w, "Invalid password", er)
+		http.Error(w, "Invalid password", http.StatusNotAcceptable)
 		return
 	}
 
 	if !utils.IsValidEmail(email) {
-		er := http.StatusNotAcceptable
 
-		http.Error(w, "Invalida e-mail", er)
+		http.Error(w, "Invalida e-mail", http.StatusNotAcceptable)
 		return
 	}
 
@@ -44,9 +41,8 @@ func (j *JWTAuth) Register(w http.ResponseWriter, r *http.Request) {
 	hashedPassword, err := utils.HashPassword(password)
 
 	if err != nil {
-		er := http.StatusInternalServerError
 
-		http.Error(w, "Server error", er)
+		http.Error(w, "Server error", http.StatusInternalServerError)
 		return
 	}
 
@@ -54,14 +50,16 @@ func (j *JWTAuth) Register(w http.ResponseWriter, r *http.Request) {
 	defer cancelA()
 
 	_, err = j.DB.Exec(ctxA,
-		`INSERT INTO users (username, email, password_hash, created_at) VALUES ($1, $2, $3, NOW())`,
-		username, email, hashedPassword,
+		`INSERT INTO users (username, email, password_hash) 
+		VALUES ($1, $2, $3)`,
+		username,
+		email,
+		hashedPassword,
 	)
 
 	if err != nil {
-		er := http.StatusConflict
 
-		http.Error(w, "Username or e-mail taken", er)
+		http.Error(w, "Username or e-mail taken", http.StatusConflict)
 		return
 	}
 

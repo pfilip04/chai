@@ -11,12 +11,13 @@ import (
 	"github.com/pfilip04/chai/config"
 )
 
-func NewRouter() (chi.Router, *pgxpool.Pool, error) {
+func NewRouter(configurations string) (chi.Router, *pgxpool.Pool, error) {
 
 	//
 	// Load the config
 
-	cfg, err := config.Load("config/config.json")
+	cfg, err := config.Load[config.Config](configurations)
+
 	if err != nil {
 		return nil, nil, err
 	}
@@ -32,6 +33,7 @@ func NewRouter() (chi.Router, *pgxpool.Pool, error) {
 	// Connect to DB
 
 	dbpool, err := ConnectDB("DATABASE_URL")
+
 	if err != nil {
 		return nil, nil, err
 	} else {
@@ -42,20 +44,23 @@ func NewRouter() (chi.Router, *pgxpool.Pool, error) {
 	// App init
 
 	secret := os.Getenv("SECRET_KEY")
+
 	if secret == "" {
 		return nil, nil, errors.New("SECRET_KEY IS NOT SET")
 	}
 
+	hcfg, err := config.Load[config.HandlerConfig](cfg.HandlerCfg)
+
 	app := NewApp(dbpool)
 
-	app.InitCookie(cfg.Cookie)
+	app.InitCookie(hcfg.Cookie)
 
-	app.InitJWT(cfg.JWT, secret)
+	app.InitJWT(hcfg.JWT, secret)
 
 	//
 	// Router init
 
-	router := app.NewChiRouter(cfg.Router)
+	router := app.NewChiRouter(hcfg.Router)
 
 	return router, dbpool, nil
 }

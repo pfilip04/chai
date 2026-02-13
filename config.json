@@ -1,0 +1,7 @@
+{
+    "env": "dev.env",
+
+    "db": "POSTGRESQL",
+
+    "handler-config": "config/handler-config.json"
+}

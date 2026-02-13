@@ -6,6 +6,8 @@ import (
 	"net/http"
 	"time"
 
+	"github.com/google/uuid"
+
 	"github.com/pfilip04/chai/utils"
 )
 
@@ -15,9 +17,8 @@ func (c *CookieAuth) Logout(w http.ResponseWriter, r *http.Request) {
 	// Validating the user authorization tokens
 
 	if _, err := c.HardAuthorize(r); err != nil {
-		er := http.StatusUnauthorized
 
-		http.Error(w, "Unauthorized", er)
+		http.Error(w, "Unauthorized", http.StatusUnauthorized)
 		return
 	}
 
@@ -27,26 +28,40 @@ func (c *CookieAuth) Logout(w http.ResponseWriter, r *http.Request) {
 	sessionCookie, err := r.Cookie("session_token")
 
 	if err != nil {
-		er := http.StatusUnauthorized
 
-		http.Error(w, "Unauthorized", er)
+		http.Error(w, "Unauthorized", http.StatusUnauthorized)
 		return
 	}
 
 	hashedSessionToken := utils.HashToken(sessionCookie.Value)
 
+	var sessionID uuid.UUID
+
 	ctxA, cancelA := context.WithTimeout(r.Context(), c.QueryTimeout)
 	defer cancelA()
 
-	_, err = c.DB.Exec(ctxA,
-		`UPDATE users SET session_token=NULL, csrf_token=NULL WHERE session_token=$1`,
+	err = c.DB.QueryRow(ctxA,
+		`DELETE FROM sessions 
+		WHERE session_token=$1 
+		RETURNING id`,
 		hashedSessionToken,
+	).Scan(&sessionID)
+
+	if err != nil {
+
+		http.Error(w, "Server error", http.StatusInternalServerError)
+		return
+	}
+
+	_, err = c.DB.Exec(ctxA,
+		`DELETE FROM refresh_tokens 
+		WHERE session_id=$1`,
+		sessionID,
 	)
 
 	if err != nil {
-		er := http.StatusInternalServerError
 
-		http.Error(w, "Server error", er)
+		http.Error(w, "Server error", http.StatusInternalServerError)
 		return
 	}
 
