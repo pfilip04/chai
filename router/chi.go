@@ -35,6 +35,7 @@ func (app *App) NewChiRouter(routercfg config.RouterConfig) chi.Router {
 		r.Post("/login", app.Cookie.Login)
 		r.Post("/logout", app.Cookie.Logout)
 		r.Delete("/delete", app.Cookie.Delete)
+		r.Post("/refresh", app.Cookie.Refresh)
 	})
 
 	router.Route("/mobile", func(r chi.Router) {

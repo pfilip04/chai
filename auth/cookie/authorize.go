@@ -32,7 +32,9 @@ func (c *CookieAuth) SoftAuthorize(r *http.Request) (uuid.UUID, error) {
 	defer cancelA()
 
 	err = c.DB.QueryRow(ctxA,
-		`SELECT user_id FROM sessions WHERE session_token=$1`,
+		`SELECT user_id FROM sessions 
+		WHERE session_token=$1 
+		AND expires_at > NOW()`,
 		hashedSessionToken,
 	).Scan(&userID)
 
@@ -67,7 +69,9 @@ func (c *CookieAuth) HardAuthorize(r *http.Request) (uuid.UUID, error) {
 	defer cancelA()
 
 	err = c.DB.QueryRow(ctxA,
-		`SELECT user_id, csrf_token FROM sessions WHERE session_token=$1`,
+		`SELECT user_id, csrf_token FROM sessions 
+		WHERE session_token=$1 
+		AND expires_at > NOW()`,
 		hashedSessionToken,
 	).Scan(&userID, &dbCsrfToken)
 

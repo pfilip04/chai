@@ -80,7 +80,7 @@ func (j *JWTAuth) Login(w http.ResponseWriter, r *http.Request) {
 	defer cancelC()
 
 	_, err = j.DB.Exec(ctxC,
-		`INSERT INTO refresh_tokens (session_id, token_hash, expires_at) 
+		`INSERT INTO refresh_tokens (session_id, refresh_token, expires_at) 
 		VALUES ($1, $2, $3)`,
 		sessionID,
 		hashedRefresh,

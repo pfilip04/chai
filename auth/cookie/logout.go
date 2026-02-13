@@ -85,5 +85,15 @@ func (c *CookieAuth) Logout(w http.ResponseWriter, r *http.Request) {
 		Path:     "/",
 	})
 
+	http.SetCookie(w, &http.Cookie{
+		Name:     "refresh_token",
+		Value:    "",
+		Expires:  time.Now().Add(-time.Hour),
+		HttpOnly: true,
+		Secure:   true,
+		SameSite: http.SameSiteStrictMode,
+		Path:     "/",
+	})
+
 	fmt.Fprintln(w, "User logout successful")
 }

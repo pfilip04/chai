@@ -10,12 +10,12 @@ import (
 
 func (c *CookieAuth) Register(w http.ResponseWriter, r *http.Request) {
 
-	//
-	// Username, password and email criteria check
-
 	username := r.FormValue("username")
 	password := r.FormValue("password")
 	email := r.FormValue("email")
+
+	//
+	// Username, password and email criteria check
 
 	if !utils.IsValidUsername(username) {
 
@@ -32,6 +32,18 @@ func (c *CookieAuth) Register(w http.ResponseWriter, r *http.Request) {
 	if !utils.IsValidEmail(email) {
 
 		http.Error(w, "Invalida e-mail", http.StatusNotAcceptable)
+		return
+	}
+
+	if !c.CheckUniqueUsername(r, username) {
+
+		http.Error(w, "Username taken", http.StatusConflict)
+		return
+	}
+
+	if !c.CheckUniqueEmail(r, email) {
+
+		http.Error(w, "E-mail taken", http.StatusConflict)
 		return
 	}
 
@@ -59,7 +71,7 @@ func (c *CookieAuth) Register(w http.ResponseWriter, r *http.Request) {
 
 	if err != nil {
 
-		http.Error(w, "Username or e-mail taken", http.StatusConflict)
+		http.Error(w, "Server error", http.StatusInternalServerError)
 		return
 	}
 

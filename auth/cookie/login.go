@@ -48,16 +48,6 @@ func (c *CookieAuth) Login(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	for !c.CheckUniqueSession(r, sessionToken) {
-		sessionToken, err = utils.GenerateToken(32)
-
-		if err != nil {
-
-			http.Error(w, "Server error", http.StatusInternalServerError)
-			return
-		}
-	}
-
 	csrfToken, err := utils.GenerateToken(32)
 
 	if err != nil {
@@ -69,19 +59,48 @@ func (c *CookieAuth) Login(w http.ResponseWriter, r *http.Request) {
 	hashedSessionToken := utils.HashToken(sessionToken)
 	hashedCsrfToken := utils.HashToken(csrfToken)
 
+	var sessionID uuid.UUID
 	expiresAt := time.Now().Add(24 * time.Hour)
 
 	ctxB, cancelB := context.WithTimeout(r.Context(), c.QueryTimeout)
 	defer cancelB()
 
-	_, err = c.DB.Exec(ctxB,
+	err = c.DB.QueryRow(ctxB,
 		`INSERT INTO sessions 
         (user_id, session_token, csrf_token, platform, expires_at) 
-        VALUES ($1, $2, $3, $4, $5)`,
+        VALUES ($1, $2, $3, $4, $5) 
+		RETURNING id`,
 		userID,
 		hashedSessionToken,
 		hashedCsrfToken,
 		"web",
+		expiresAt,
+	).Scan(&sessionID)
+
+	if err != nil {
+
+		http.Error(w, "Server error", http.StatusInternalServerError)
+		return
+	}
+
+	refreshToken, err := utils.GenerateToken(64)
+
+	if err != nil {
+
+		http.Error(w, "Server error", http.StatusInternalServerError)
+		return
+	}
+
+	hashedRefresh := utils.HashToken(refreshToken)
+
+	ctxC, cancelC := context.WithTimeout(r.Context(), c.QueryTimeout)
+	defer cancelC()
+
+	_, err = c.DB.Exec(ctxC,
+		`INSERT INTO refresh_tokens (session_id, refresh_token, expires_at) 
+		VALUES ($1, $2, $3)`,
+		sessionID,
+		hashedRefresh,
 		expiresAt,
 	)
 
@@ -106,6 +125,16 @@ func (c *CookieAuth) Login(w http.ResponseWriter, r *http.Request) {
 		Value:    csrfToken,
 		Expires:  expiresAt,
 		HttpOnly: false,
+		Secure:   true,
+		SameSite: http.SameSiteStrictMode,
+		Path:     "/",
+	})
+
+	http.SetCookie(w, &http.Cookie{
+		Name:     "refresh_token",
+		Value:    refreshToken,
+		Expires:  expiresAt,
+		HttpOnly: true,
 		Secure:   true,
 		SameSite: http.SameSiteStrictMode,
 		Path:     "/",

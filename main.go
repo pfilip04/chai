@@ -40,7 +40,6 @@ CREATE TABLE sessions (
     ip_address      INET,
 
     expires_at      TIMESTAMPTZ NOT NULL,
-    revoked_at      TIMESTAMPTZ,
 
     created_at      TIMESTAMPTZ NOT NULL DEFAULT now()
 );
@@ -50,11 +49,10 @@ CREATE INDEX idx_sessions_expires_at ON sessions(expires_at);
 
 CREATE TABLE refresh_tokens (
     id              UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    session_id      UUID NOT NULL REFERENCES sessions(id) ON DELETE CASCADE,
+    session_id      UUID REFERENCES sessions(id) ON DELETE CASCADE,
 
-    token_hash      TEXT NOT NULL UNIQUE,
+    refresh_token   TEXT NOT NULL UNIQUE,
     expires_at      TIMESTAMPTZ NOT NULL,
-    revoked_at      TIMESTAMPTZ,
 
     replaced_by     UUID REFERENCES refresh_tokens(id) ON DELETE SET NULL,
 

@@ -36,7 +36,7 @@ func GenerateToken(length int) (string, error) {
 		fmt.Printf("Failed to generate token: %v", err)
 		return "", err
 	}
-	return base64.URLEncoding.EncodeToString(bytes), nil
+	return base64.RawURLEncoding.EncodeToString(bytes), nil
 }
 
 //

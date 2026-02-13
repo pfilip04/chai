@@ -52,6 +52,15 @@ func CheckJWT(tokenString string, secret []byte, expectedIssuer string) (uuid.UU
 		return uuid.Nil, uuid.Nil, errInvalid
 	}
 
+	expFloat, ok := claims["exp"].(float64)
+	if !ok {
+		return uuid.Nil, uuid.Nil, errInvalid
+	}
+
+	if time.Now().Unix() > int64(expFloat) {
+		return uuid.Nil, uuid.Nil, errInvalid
+	}
+
 	userID, err := uuid.Parse(sub)
 
 	if err != nil {
