@@ -7,19 +7,21 @@ import (
 )
 
 type JWTAuth struct {
-	DB           *pgxpool.Pool
-	QueryTimeout time.Duration
-	secret       []byte
-	specialname  string
-	expiration   time.Duration
+	DB                     *pgxpool.Pool
+	QueryTimeout           time.Duration
+	secret                 []byte
+	issuer                 string
+	jwtTokenExpiration     time.Duration
+	refreshTokenExpiration time.Duration
 }
 
-func New(db *pgxpool.Pool, queryTimeout time.Duration, secret []byte, specialname string, expiration time.Duration) *JWTAuth {
+func New(db *pgxpool.Pool, queryTimeout time.Duration, secret []byte, specialname string, jExpiration time.Duration, rExpiration time.Duration) *JWTAuth {
 	return &JWTAuth{
-		DB:           db,
-		QueryTimeout: queryTimeout,
-		secret:       secret,
-		specialname:  specialname,
-		expiration:   expiration,
+		DB:                     db,
+		QueryTimeout:           queryTimeout,
+		secret:                 secret,
+		issuer:                 specialname,
+		jwtTokenExpiration:     jExpiration,
+		refreshTokenExpiration: rExpiration,
 	}
 }

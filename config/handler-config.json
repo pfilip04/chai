@@ -4,13 +4,16 @@
         "requestSize": 1048576
     },
 
+    "cookie": {
+        "queryTimeout": "3s",
+        "session-token-expiration": "15m",
+        "refresh-token-expiration": "168h"
+    },
+
     "jwt": {
         "queryTimeout": "3s",
-        "expiration": "15m",
+        "jwt-token-expiration": "15m",
+        "refresh-token-expiration": "720h",
         "specialName": "chai_auth_token"
-    },
-    
-    "cookie": {
-        "queryTimeout": "3s"
     }
 }

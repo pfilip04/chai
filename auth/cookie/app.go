@@ -7,13 +7,17 @@ import (
 )
 
 type CookieAuth struct {
-	DB           *pgxpool.Pool
-	QueryTimeout time.Duration
+	DB                     *pgxpool.Pool
+	QueryTimeout           time.Duration
+	sessionTokenExpiration time.Duration
+	refreshTokenExpiration time.Duration
 }
 
-func New(db *pgxpool.Pool, queryTimeout time.Duration) *CookieAuth {
+func New(db *pgxpool.Pool, queryTimeout time.Duration, sessionExpiration time.Duration, refreshExpiration time.Duration) *CookieAuth {
 	return &CookieAuth{
-		DB:           db,
-		QueryTimeout: queryTimeout,
+		DB:                     db,
+		QueryTimeout:           queryTimeout,
+		sessionTokenExpiration: sessionExpiration,
+		refreshTokenExpiration: refreshExpiration,
 	}
 }

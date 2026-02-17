@@ -6,6 +6,7 @@ import (
 	"net/http"
 	"strings"
 
+	"github.com/pfilip04/chai/errs"
 	"github.com/pfilip04/chai/utils"
 )
 
@@ -15,17 +16,17 @@ func (j *JWTAuth) Delete(w http.ResponseWriter, r *http.Request) {
 
 	if authHeader == "" {
 
-		http.Error(w, "Unauthorized", http.StatusUnauthorized)
+		http.Error(w, errs.AuthError.Error(), http.StatusUnauthorized)
 		return
 	}
 
 	token := strings.TrimPrefix(authHeader, "Bearer ")
 
-	userID, sessionID, err := utils.CheckJWT(token, j.secret, j.specialname)
+	userID, sessionID, err := utils.CheckJWT(token, j.secret, j.issuer)
 
 	if err != nil {
 
-		http.Error(w, "Unauthorized", http.StatusUnauthorized)
+		http.Error(w, errs.AuthError.Error(), http.StatusUnauthorized)
 		return
 	}
 
@@ -41,7 +42,7 @@ func (j *JWTAuth) Delete(w http.ResponseWriter, r *http.Request) {
 
 	if err != nil {
 
-		http.Error(w, "Server error", http.StatusInternalServerError)
+		http.Error(w, errs.DatabaseError.Error(), http.StatusInternalServerError)
 		return
 	}
 
@@ -56,7 +57,7 @@ func (j *JWTAuth) Delete(w http.ResponseWriter, r *http.Request) {
 
 	if err != nil {
 
-		http.Error(w, "Server error", http.StatusInternalServerError)
+		http.Error(w, errs.DatabaseError.Error(), http.StatusInternalServerError)
 		return
 	}
 
@@ -68,6 +69,12 @@ func (j *JWTAuth) Delete(w http.ResponseWriter, r *http.Request) {
 		WHERE id=$1`,
 		userID,
 	)
+
+	if err != nil {
+
+		http.Error(w, errs.DatabaseError.Error(), http.StatusInternalServerError)
+		return
+	}
 
 	w.WriteHeader(http.StatusOK)
 	fmt.Fprintln(w, "User account deletion successful")

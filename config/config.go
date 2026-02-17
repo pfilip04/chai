@@ -21,17 +21,21 @@ type HandlerConfig struct {
 type Duration time.Duration
 
 func (d *Duration) UnmarshalJSON(b []byte) error {
+
 	var s string
+
 	if err := json.Unmarshal(b, &s); err != nil {
 		return err
 	}
 
 	parsed, err := time.ParseDuration(s)
+
 	if err != nil {
 		return err
 	}
 
 	*d = Duration(parsed)
+
 	return nil
 }
 
@@ -41,13 +45,16 @@ type RouterConfig struct {
 }
 
 type CookieConfig struct {
-	QueryTimeout Duration `json:"queryTimeout"`
+	QueryTimeout           Duration `json:"queryTimeout"`
+	SessionTokenExpiration Duration `json:"session-token-expiration"`
+	RefreshTokenExpiration Duration `json:"refresh-token-expiration"`
 }
 
 type JWTConfig struct {
-	QueryTimeout Duration `json:"queryTimeout"`
-	Expiration   Duration `json:"expiration"`
-	SpecialName  string   `json:"specialName"`
+	QueryTimeout           Duration `json:"queryTimeout"`
+	JwtTokenExpiration     Duration `json:"jwt-token-expiration"`
+	RefreshTokenExpiration Duration `json:"refresh-token-expiration"`
+	SpecialName            string   `json:"specialName"`
 }
 
 func Load[T any](path string) (T, error) {

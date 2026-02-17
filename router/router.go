@@ -1,6 +1,7 @@
 package router
 
 import (
+	"context"
 	"errors"
 	"log"
 	"os"
@@ -9,9 +10,11 @@ import (
 	"github.com/jackc/pgx/v5/pgxpool"
 
 	"github.com/pfilip04/chai/config"
+
+	database "github.com/pfilip04/chai/database/postgresql"
 )
 
-func NewRouter(configurations string) (chi.Router, *pgxpool.Pool, error) {
+func NewRouter(ctx context.Context, configurations string) (chi.Router, *pgxpool.Pool, error) {
 
 	//
 	// Load the config
@@ -32,13 +35,23 @@ func NewRouter(configurations string) (chi.Router, *pgxpool.Pool, error) {
 	//
 	// Connect to DB
 
-	dbpool, err := ConnectDB("DATABASE_URL")
+	dbpool, err := ConnectDB(ctx, "DATABASE_URL")
 
 	if err != nil {
 		return nil, nil, err
-	} else {
-		log.Println("Database ok")
 	}
+
+	log.Println("Database ok")
+
+	//
+	// Create database tables
+
+	if err = database.InitSchema(ctx, dbpool); err != nil {
+		dbpool.Close()
+		return nil, nil, err
+	}
+
+	log.Println("Tables created/exist")
 
 	//
 	// App init

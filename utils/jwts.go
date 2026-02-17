@@ -8,15 +8,24 @@ import (
 	"github.com/google/uuid"
 )
 
-func CreateJWT(secret []byte, userID uuid.UUID, sessionID uuid.UUID, specialname string, expiration time.Duration) (string, error) {
+type CustomClaims struct {
+	SessionID string `json:"sid"`
+	jwt.RegisteredClaims
+}
 
-	claims := jwt.MapClaims{
-		"sub": userID.String(),
-		"sid": sessionID.String(),
-		"iss": specialname,
-		"jti": uuid.NewString(),
-		"iat": time.Now().Unix(),
-		"exp": time.Now().Add(expiration).Unix(),
+func CreateJWT(secret []byte, userID uuid.UUID, sessionID uuid.UUID, issuer string, expiration time.Duration) (string, error) {
+
+	now := time.Now()
+
+	claims := CustomClaims{
+		SessionID: sessionID.String(),
+		RegisteredClaims: jwt.RegisteredClaims{
+			Subject:   userID.String(),
+			Issuer:    issuer,
+			ID:        uuid.NewString(),
+			IssuedAt:  jwt.NewNumericDate(now),
+			ExpiresAt: jwt.NewNumericDate(now.Add(expiration)),
+		},
 	}
 
 	token := jwt.NewWithClaims(jwt.SigningMethodHS256, claims)
@@ -24,56 +33,38 @@ func CreateJWT(secret []byte, userID uuid.UUID, sessionID uuid.UUID, specialname
 	return token.SignedString(secret)
 }
 
-func CheckJWT(tokenString string, secret []byte, expectedIssuer string) (uuid.UUID, uuid.UUID, error) {
+func CheckJWT(tokenString string, secret []byte, issuer string) (uuid.UUID, uuid.UUID, error) {
+
 	errInvalid := fmt.Errorf("invalid token")
 
-	token, err := jwt.Parse(tokenString, func(token *jwt.Token) (any, error) {
-		if token.Method != jwt.SigningMethodHS256 {
-			return nil, errInvalid
-		}
-		return secret, nil
-	})
+	claims := &CustomClaims{}
+
+	token, err := jwt.ParseWithClaims(
+		tokenString,
+		claims,
+		func(token *jwt.Token) (any, error) {
+
+			if _, ok := token.Method.(*jwt.SigningMethodHMAC); !ok {
+				return nil, errInvalid
+			}
+
+			return secret, nil
+		},
+
+		jwt.WithIssuer(issuer),
+		jwt.WithValidMethods([]string{"HS256"}),
+	)
+
 	if err != nil || !token.Valid {
 		return uuid.Nil, uuid.Nil, errInvalid
 	}
 
-	claims, ok := token.Claims.(jwt.MapClaims)
-	if !ok {
-		return uuid.Nil, uuid.Nil, errInvalid
-	}
-
-	iss, ok := claims["iss"].(string)
-	if !ok || iss != expectedIssuer {
-		return uuid.Nil, uuid.Nil, errInvalid
-	}
-
-	sub, ok := claims["sub"].(string)
-	if !ok {
-		return uuid.Nil, uuid.Nil, errInvalid
-	}
-
-	expFloat, ok := claims["exp"].(float64)
-	if !ok {
-		return uuid.Nil, uuid.Nil, errInvalid
-	}
-
-	if time.Now().Unix() > int64(expFloat) {
-		return uuid.Nil, uuid.Nil, errInvalid
-	}
-
-	userID, err := uuid.Parse(sub)
-
+	userID, err := uuid.Parse(claims.Subject)
 	if err != nil {
 		return uuid.Nil, uuid.Nil, errInvalid
 	}
 
-	sid, ok := claims["sid"].(string)
-	if !ok {
-		return uuid.Nil, uuid.Nil, errInvalid
-	}
-
-	sessionID, err := uuid.Parse(sid)
-
+	sessionID, err := uuid.Parse(claims.SessionID)
 	if err != nil {
 		return uuid.Nil, uuid.Nil, errInvalid
 	}

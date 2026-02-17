@@ -8,6 +8,7 @@ import (
 
 	"github.com/google/uuid"
 
+	"github.com/pfilip04/chai/errs"
 	"github.com/pfilip04/chai/utils"
 )
 
@@ -18,7 +19,7 @@ func (c *CookieAuth) Logout(w http.ResponseWriter, r *http.Request) {
 
 	if _, err := c.HardAuthorize(r); err != nil {
 
-		http.Error(w, "Unauthorized", http.StatusUnauthorized)
+		http.Error(w, errs.AuthError.Error(), http.StatusUnauthorized)
 		return
 	}
 
@@ -29,7 +30,7 @@ func (c *CookieAuth) Logout(w http.ResponseWriter, r *http.Request) {
 
 	if err != nil {
 
-		http.Error(w, "Unauthorized", http.StatusUnauthorized)
+		http.Error(w, errs.AuthError.Error(), http.StatusUnauthorized)
 		return
 	}
 
@@ -49,7 +50,7 @@ func (c *CookieAuth) Logout(w http.ResponseWriter, r *http.Request) {
 
 	if err != nil {
 
-		http.Error(w, "Server error", http.StatusInternalServerError)
+		http.Error(w, errs.DatabaseError.Error(), http.StatusInternalServerError)
 		return
 	}
 
@@ -61,7 +62,7 @@ func (c *CookieAuth) Logout(w http.ResponseWriter, r *http.Request) {
 
 	if err != nil {
 
-		http.Error(w, "Server error", http.StatusInternalServerError)
+		http.Error(w, errs.DatabaseError.Error(), http.StatusInternalServerError)
 		return
 	}
 

@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"net/http"
 
+	"github.com/pfilip04/chai/errs"
 	"github.com/pfilip04/chai/utils"
 )
 
@@ -54,7 +55,7 @@ func (j *JWTAuth) Register(w http.ResponseWriter, r *http.Request) {
 
 	if err != nil {
 
-		http.Error(w, "Server error", http.StatusInternalServerError)
+		http.Error(w, "Couldn't hash", http.StatusInternalServerError)
 		return
 	}
 
@@ -71,7 +72,7 @@ func (j *JWTAuth) Register(w http.ResponseWriter, r *http.Request) {
 
 	if err != nil {
 
-		http.Error(w, "Server error", http.StatusInternalServerError)
+		http.Error(w, errs.DatabaseError.Error(), http.StatusInternalServerError)
 		return
 	}
 

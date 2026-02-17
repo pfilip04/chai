@@ -2,15 +2,13 @@ package cookie
 
 import (
 	"context"
-	"errors"
 	"net/http"
 
 	"github.com/google/uuid"
 
+	"github.com/pfilip04/chai/errs"
 	"github.com/pfilip04/chai/utils"
 )
-
-var AuthError = errors.New("Unauthorized")
 
 //
 // Cookie checking for authorization
@@ -21,7 +19,7 @@ func (c *CookieAuth) SoftAuthorize(r *http.Request) (uuid.UUID, error) {
 
 	st, err := r.Cookie("session_token")
 	if err != nil || st.Value == "" {
-		return uuid.Nil, AuthError
+		return uuid.Nil, errs.AuthError
 	}
 
 	hashedSessionToken := utils.HashToken(st.Value)
@@ -33,13 +31,12 @@ func (c *CookieAuth) SoftAuthorize(r *http.Request) (uuid.UUID, error) {
 
 	err = c.DB.QueryRow(ctxA,
 		`SELECT user_id FROM sessions 
-		WHERE session_token=$1 
-		AND expires_at > NOW()`,
+		WHERE session_token=$1 AND expires_at > NOW()`,
 		hashedSessionToken,
 	).Scan(&userID)
 
 	if err != nil {
-		return uuid.Nil, AuthError
+		return uuid.Nil, errs.AuthError
 	}
 
 	return userID, nil
@@ -51,7 +48,7 @@ func (c *CookieAuth) HardAuthorize(r *http.Request) (uuid.UUID, error) {
 
 	st, err := r.Cookie("session_token")
 	if err != nil || st.Value == "" {
-		return uuid.Nil, AuthError
+		return uuid.Nil, errs.AuthError
 	}
 
 	hashedSessionToken := utils.HashToken(st.Value)
@@ -59,7 +56,7 @@ func (c *CookieAuth) HardAuthorize(r *http.Request) (uuid.UUID, error) {
 	csrfToken := r.Header.Get("X-CSRF-Token")
 
 	if csrfToken == "" {
-		return uuid.Nil, AuthError
+		return uuid.Nil, errs.AuthError
 	}
 
 	var dbCsrfToken string
@@ -70,17 +67,16 @@ func (c *CookieAuth) HardAuthorize(r *http.Request) (uuid.UUID, error) {
 
 	err = c.DB.QueryRow(ctxA,
 		`SELECT user_id, csrf_token FROM sessions 
-		WHERE session_token=$1 
-		AND expires_at > NOW()`,
+		WHERE session_token=$1 AND expires_at > NOW()`,
 		hashedSessionToken,
 	).Scan(&userID, &dbCsrfToken)
 
 	if err != nil {
-		return uuid.Nil, AuthError
+		return uuid.Nil, errs.AuthError
 	}
 
 	if !utils.CheckToken(csrfToken, dbCsrfToken) {
-		return uuid.Nil, AuthError
+		return uuid.Nil, errs.AuthError
 	}
 
 	return userID, nil

@@ -8,6 +8,7 @@ import (
 
 	"github.com/google/uuid"
 
+	"github.com/pfilip04/chai/errs"
 	"github.com/pfilip04/chai/utils"
 )
 
@@ -44,7 +45,7 @@ func (c *CookieAuth) Login(w http.ResponseWriter, r *http.Request) {
 
 	if err != nil {
 
-		http.Error(w, "Server error", http.StatusInternalServerError)
+		http.Error(w, "Couldn't generate session token", http.StatusInternalServerError)
 		return
 	}
 
@@ -52,7 +53,7 @@ func (c *CookieAuth) Login(w http.ResponseWriter, r *http.Request) {
 
 	if err != nil {
 
-		http.Error(w, "Server error", http.StatusInternalServerError)
+		http.Error(w, "Couldn't generate csrf token", http.StatusInternalServerError)
 		return
 	}
 
@@ -60,7 +61,9 @@ func (c *CookieAuth) Login(w http.ResponseWriter, r *http.Request) {
 	hashedCsrfToken := utils.HashToken(csrfToken)
 
 	var sessionID uuid.UUID
-	expiresAt := time.Now().Add(24 * time.Hour)
+
+	sessionExpiresAt := time.Now().UTC().Add(c.sessionTokenExpiration)
+	refreshExpiresAt := time.Now().UTC().Add(c.refreshTokenExpiration)
 
 	ctxB, cancelB := context.WithTimeout(r.Context(), c.QueryTimeout)
 	defer cancelB()
@@ -74,12 +77,12 @@ func (c *CookieAuth) Login(w http.ResponseWriter, r *http.Request) {
 		hashedSessionToken,
 		hashedCsrfToken,
 		"web",
-		expiresAt,
+		refreshExpiresAt,
 	).Scan(&sessionID)
 
 	if err != nil {
 
-		http.Error(w, "Server error", http.StatusInternalServerError)
+		http.Error(w, errs.DatabaseError.Error(), http.StatusInternalServerError)
 		return
 	}
 
@@ -87,7 +90,7 @@ func (c *CookieAuth) Login(w http.ResponseWriter, r *http.Request) {
 
 	if err != nil {
 
-		http.Error(w, "Server error", http.StatusInternalServerError)
+		http.Error(w, "Couldn't generate refresh token", http.StatusInternalServerError)
 		return
 	}
 
@@ -101,19 +104,19 @@ func (c *CookieAuth) Login(w http.ResponseWriter, r *http.Request) {
 		VALUES ($1, $2, $3)`,
 		sessionID,
 		hashedRefresh,
-		expiresAt,
+		refreshExpiresAt,
 	)
 
 	if err != nil {
 
-		http.Error(w, "Server error", http.StatusInternalServerError)
+		http.Error(w, errs.DatabaseError.Error(), http.StatusInternalServerError)
 		return
 	}
 
 	http.SetCookie(w, &http.Cookie{
 		Name:     "session_token",
 		Value:    sessionToken,
-		Expires:  expiresAt,
+		Expires:  sessionExpiresAt,
 		HttpOnly: true,
 		Secure:   true,
 		SameSite: http.SameSiteStrictMode,
@@ -123,7 +126,7 @@ func (c *CookieAuth) Login(w http.ResponseWriter, r *http.Request) {
 	http.SetCookie(w, &http.Cookie{
 		Name:     "csrf_token",
 		Value:    csrfToken,
-		Expires:  expiresAt,
+		Expires:  sessionExpiresAt,
 		HttpOnly: false,
 		Secure:   true,
 		SameSite: http.SameSiteStrictMode,
@@ -133,7 +136,7 @@ func (c *CookieAuth) Login(w http.ResponseWriter, r *http.Request) {
 	http.SetCookie(w, &http.Cookie{
 		Name:     "refresh_token",
 		Value:    refreshToken,
-		Expires:  expiresAt,
+		Expires:  refreshExpiresAt,
 		HttpOnly: true,
 		Secure:   true,
 		SameSite: http.SameSiteStrictMode,

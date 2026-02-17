@@ -27,6 +27,8 @@ func (a *App) InitCookie(cookiecfg config.CookieConfig) {
 	a.Cookie = cookie.New(
 		a.DB,
 		time.Duration(cookiecfg.QueryTimeout),
+		time.Duration(cookiecfg.SessionTokenExpiration),
+		time.Duration(cookiecfg.RefreshTokenExpiration),
 	)
 }
 
@@ -36,6 +38,7 @@ func (a *App) InitJWT(jwtcfg config.JWTConfig, secret string) {
 		time.Duration(jwtcfg.QueryTimeout),
 		[]byte(secret),
 		jwtcfg.SpecialName,
-		time.Duration(jwtcfg.Expiration),
+		time.Duration(jwtcfg.JwtTokenExpiration),
+		time.Duration(jwtcfg.RefreshTokenExpiration),
 	)
 }

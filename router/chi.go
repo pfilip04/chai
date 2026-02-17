@@ -43,6 +43,7 @@ func (app *App) NewChiRouter(routercfg config.RouterConfig) chi.Router {
 		r.Post("/login", app.JWT.Login)
 		r.Post("/logout", app.JWT.Logout)
 		r.Delete("/delete", app.JWT.Delete)
+		r.Post("/refresh", app.JWT.Refresh)
 	})
 
 	return router

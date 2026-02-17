@@ -8,6 +8,7 @@ import (
 
 	"github.com/google/uuid"
 
+	"github.com/pfilip04/chai/errs"
 	"github.com/pfilip04/chai/utils"
 )
 
@@ -32,16 +33,21 @@ func (j *JWTAuth) Login(w http.ResponseWriter, r *http.Request) {
 		username,
 	).Scan(&userID, &passwordHash)
 
-	if err != nil || !utils.CheckPasswordHash(password, passwordHash) {
+	if err != nil {
 
-		http.Error(w, "Invalid username or password", http.StatusUnauthorized)
+		http.Error(w, "Invalid username", http.StatusUnauthorized)
 		return
 	}
 
+	if !utils.CheckPasswordHash(password, passwordHash) {
+		http.Error(w, "Invalid password", http.StatusUnauthorized)
+		return
+	}
+
+	refreshExpiresAt := time.Now().UTC().Add(j.refreshTokenExpiration)
+
 	ctxB, cancelB := context.WithTimeout(r.Context(), j.QueryTimeout)
 	defer cancelB()
-
-	expiresAt := time.Now().Add(30 * 24 * time.Hour)
 
 	err = j.DB.QueryRow(ctxB,
 		`INSERT INTO sessions (user_id, platform, expires_at) 
@@ -49,20 +55,20 @@ func (j *JWTAuth) Login(w http.ResponseWriter, r *http.Request) {
 		RETURNING id`,
 		userID,
 		"mobile",
-		expiresAt,
+		refreshExpiresAt,
 	).Scan(&sessionID)
 
 	if err != nil {
 
-		http.Error(w, "Server error", http.StatusInternalServerError)
+		http.Error(w, errs.DatabaseError.Error(), http.StatusInternalServerError)
 		return
 	}
 
-	tokenString, err := utils.CreateJWT(j.secret, userID, sessionID, j.specialname, j.expiration)
+	tokenString, err := utils.CreateJWT(j.secret, userID, sessionID, j.issuer, j.jwtTokenExpiration)
 
 	if err != nil {
 
-		http.Error(w, "Failed to create token", http.StatusInternalServerError)
+		http.Error(w, "Couldn't create JWT", http.StatusInternalServerError)
 		return
 	}
 
@@ -70,7 +76,7 @@ func (j *JWTAuth) Login(w http.ResponseWriter, r *http.Request) {
 
 	if err != nil {
 
-		http.Error(w, "Server error", http.StatusInternalServerError)
+		http.Error(w, "Couldn't generate refresh token", http.StatusInternalServerError)
 		return
 	}
 
@@ -84,17 +90,18 @@ func (j *JWTAuth) Login(w http.ResponseWriter, r *http.Request) {
 		VALUES ($1, $2, $3)`,
 		sessionID,
 		hashedRefresh,
-		expiresAt,
+		refreshExpiresAt,
 	)
 
 	if err != nil {
 
-		http.Error(w, "Server error", http.StatusInternalServerError)
+		http.Error(w, errs.DatabaseError.Error(), http.StatusInternalServerError)
 		return
 	}
 
 	w.Header().Set("Content-Type", "application/json")
 	w.Header().Set("Authorization", "Bearer "+tokenString)
+	w.WriteHeader(http.StatusOK)
 
 	resp := struct {
 		Token        string `json:"token"`
