@@ -1,15 +1,3 @@
-package database
-
-import (
-	"context"
-	"time"
-
-	"github.com/jackc/pgx/v5/pgxpool"
-)
-
-func InitSchema(ctx context.Context, db *pgxpool.Pool) error {
-
-	schema := `
 CREATE TABLE IF NOT EXISTS users (
     id              UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     username	    TEXT NOT NULL UNIQUE,
@@ -55,10 +43,3 @@ CREATE TABLE IF NOT EXISTS refresh_tokens (
 );
 
 CREATE INDEX IF NOT EXISTS idx_refresh_session_id ON refresh_tokens(session_id);
-`
-	ctx20, cancel20 := context.WithTimeout(ctx, 20*time.Second)
-	defer cancel20()
-
-	_, err := db.Exec(ctx20, schema)
-	return err
-}

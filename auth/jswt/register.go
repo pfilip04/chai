@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"net/http"
 
+	"github.com/pfilip04/chai/database/postgresql/repository"
 	"github.com/pfilip04/chai/errs"
 	"github.com/pfilip04/chai/utils"
 )
@@ -62,13 +63,13 @@ func (j *JWTAuth) Register(w http.ResponseWriter, r *http.Request) {
 	ctxA, cancelA := context.WithTimeout(r.Context(), j.QueryTimeout)
 	defer cancelA()
 
-	_, err = j.DB.Exec(ctxA,
-		`INSERT INTO users (username, email, password_hash) 
-		VALUES ($1, $2, $3)`,
-		username,
-		email,
-		hashedPassword,
-	)
+	repo := repository.New(j.DB)
+
+	err = repo.CreateUser(ctxA, repository.CreateUserParams{
+		Username:     username,
+		Email:        email,
+		PasswordHash: hashedPassword,
+	})
 
 	if err != nil {
 

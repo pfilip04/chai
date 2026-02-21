@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"net/http"
 
+	"github.com/pfilip04/chai/database/postgresql/repository"
 	"github.com/pfilip04/chai/errs"
 	"github.com/pfilip04/chai/utils"
 )
@@ -62,13 +63,13 @@ func (c *CookieAuth) Register(w http.ResponseWriter, r *http.Request) {
 	ctxA, cancelA := context.WithTimeout(r.Context(), c.QueryTimeout)
 	defer cancelA()
 
-	_, err = c.DB.Exec(ctxA,
-		`INSERT INTO users (username, email, password_hash) 
-		VALUES ($1, $2, $3)`,
-		username,
-		email,
-		hashedPassword,
-	)
+	repo := repository.New(c.DB)
+
+	err = repo.CreateUser(ctxA, repository.CreateUserParams{
+		Username:     username,
+		Email:        email,
+		PasswordHash: hashedPassword,
+	})
 
 	if err != nil {
 

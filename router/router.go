@@ -10,8 +10,6 @@ import (
 	"github.com/jackc/pgx/v5/pgxpool"
 
 	"github.com/pfilip04/chai/config"
-
-	database "github.com/pfilip04/chai/database/postgresql"
 )
 
 func NewRouter(ctx context.Context, configurations string) (chi.Router, *pgxpool.Pool, error) {
@@ -42,16 +40,6 @@ func NewRouter(ctx context.Context, configurations string) (chi.Router, *pgxpool
 	}
 
 	log.Println("Database ok")
-
-	//
-	// Create database tables
-
-	if err = database.InitSchema(ctx, dbpool); err != nil {
-		dbpool.Close()
-		return nil, nil, err
-	}
-
-	log.Println("Tables created/exist")
 
 	//
 	// App init
