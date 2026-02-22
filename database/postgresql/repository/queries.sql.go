@@ -7,7 +7,35 @@ package repository
 
 import (
 	"context"
+	"time"
+
+	"github.com/google/uuid"
+	"github.com/jackc/pgx/v5/pgtype"
 )
+
+const countEmail = `-- name: CountEmail :one
+SELECT COUNT(*) FROM users 
+WHERE email=$1
+`
+
+func (q *Queries) CountEmail(ctx context.Context, email string) (int64, error) {
+	row := q.db.QueryRow(ctx, countEmail, email)
+	var count int64
+	err := row.Scan(&count)
+	return count, err
+}
+
+const countUsername = `-- name: CountUsername :one
+SELECT COUNT(*) FROM users 
+WHERE username=$1
+`
+
+func (q *Queries) CountUsername(ctx context.Context, username string) (int64, error) {
+	row := q.db.QueryRow(ctx, countUsername, username)
+	var count int64
+	err := row.Scan(&count)
+	return count, err
+}
 
 const createUser = `-- name: CreateUser :exec
 INSERT INTO users (username, email, password_hash) 
@@ -23,4 +51,252 @@ type CreateUserParams struct {
 func (q *Queries) CreateUser(ctx context.Context, arg CreateUserParams) error {
 	_, err := q.db.Exec(ctx, createUser, arg.Username, arg.Email, arg.PasswordHash)
 	return err
+}
+
+const deleteCookieSession = `-- name: DeleteCookieSession :one
+DELETE FROM sessions 
+WHERE session_token=$1 
+RETURNING id
+`
+
+func (q *Queries) DeleteCookieSession(ctx context.Context, sessionToken pgtype.Text) (uuid.UUID, error) {
+	row := q.db.QueryRow(ctx, deleteCookieSession, sessionToken)
+	var id uuid.UUID
+	err := row.Scan(&id)
+	return id, err
+}
+
+const deleteJWTSession = `-- name: DeleteJWTSession :execrows
+DELETE FROM sessions 
+WHERE id=$1 AND user_id=$2
+`
+
+type DeleteJWTSessionParams struct {
+	ID     uuid.UUID `json:"id"`
+	UserID uuid.UUID `json:"user_id"`
+}
+
+func (q *Queries) DeleteJWTSession(ctx context.Context, arg DeleteJWTSessionParams) (int64, error) {
+	result, err := q.db.Exec(ctx, deleteJWTSession, arg.ID, arg.UserID)
+	if err != nil {
+		return 0, err
+	}
+	return result.RowsAffected(), nil
+}
+
+const deleteRefreshToken = `-- name: DeleteRefreshToken :execrows
+DELETE FROM refresh_tokens 
+WHERE session_id=$1
+`
+
+func (q *Queries) DeleteRefreshToken(ctx context.Context, sessionID pgtype.UUID) (int64, error) {
+	result, err := q.db.Exec(ctx, deleteRefreshToken, sessionID)
+	if err != nil {
+		return 0, err
+	}
+	return result.RowsAffected(), nil
+}
+
+const deleteUser = `-- name: DeleteUser :execrows
+DELETE FROM users 
+WHERE id=$1
+`
+
+func (q *Queries) DeleteUser(ctx context.Context, id uuid.UUID) (int64, error) {
+	result, err := q.db.Exec(ctx, deleteUser, id)
+	if err != nil {
+		return 0, err
+	}
+	return result.RowsAffected(), nil
+}
+
+const getIdAndPass = `-- name: GetIdAndPass :one
+SELECT id, password_hash FROM users 
+WHERE username=$1
+`
+
+type GetIdAndPassRow struct {
+	ID           uuid.UUID `json:"id"`
+	PasswordHash string    `json:"password_hash"`
+}
+
+func (q *Queries) GetIdAndPass(ctx context.Context, username string) (GetIdAndPassRow, error) {
+	row := q.db.QueryRow(ctx, getIdAndPass, username)
+	var i GetIdAndPassRow
+	err := row.Scan(&i.ID, &i.PasswordHash)
+	return i, err
+}
+
+const getSessionIdByRefresh = `-- name: GetSessionIdByRefresh :one
+SELECT session_id FROM refresh_tokens 
+WHERE refresh_token=$1 AND expires_at > NOW()
+`
+
+func (q *Queries) GetSessionIdByRefresh(ctx context.Context, refreshToken string) (pgtype.UUID, error) {
+	row := q.db.QueryRow(ctx, getSessionIdByRefresh, refreshToken)
+	var session_id pgtype.UUID
+	err := row.Scan(&session_id)
+	return session_id, err
+}
+
+const getUserIdAndCsrfToken = `-- name: GetUserIdAndCsrfToken :one
+SELECT user_id, csrf_token FROM sessions 
+WHERE session_token=$1 AND expires_at > NOW()
+`
+
+type GetUserIdAndCsrfTokenRow struct {
+	UserID    uuid.UUID   `json:"user_id"`
+	CsrfToken pgtype.Text `json:"csrf_token"`
+}
+
+func (q *Queries) GetUserIdAndCsrfToken(ctx context.Context, sessionToken pgtype.Text) (GetUserIdAndCsrfTokenRow, error) {
+	row := q.db.QueryRow(ctx, getUserIdAndCsrfToken, sessionToken)
+	var i GetUserIdAndCsrfTokenRow
+	err := row.Scan(&i.UserID, &i.CsrfToken)
+	return i, err
+}
+
+const getUserIdBySessionId = `-- name: GetUserIdBySessionId :one
+SELECT user_id FROM sessions 
+WHERE id=$1 AND expires_at > NOW()
+`
+
+func (q *Queries) GetUserIdBySessionId(ctx context.Context, id uuid.UUID) (uuid.UUID, error) {
+	row := q.db.QueryRow(ctx, getUserIdBySessionId, id)
+	var user_id uuid.UUID
+	err := row.Scan(&user_id)
+	return user_id, err
+}
+
+const insertCookieSession = `-- name: InsertCookieSession :one
+INSERT INTO sessions (user_id, session_token, csrf_token, platform, expires_at) 
+VALUES ($1, $2, $3, $4, $5) 
+RETURNING id
+`
+
+type InsertCookieSessionParams struct {
+	UserID       uuid.UUID   `json:"user_id"`
+	SessionToken pgtype.Text `json:"session_token"`
+	CsrfToken    pgtype.Text `json:"csrf_token"`
+	Platform     string      `json:"platform"`
+	ExpiresAt    time.Time   `json:"expires_at"`
+}
+
+func (q *Queries) InsertCookieSession(ctx context.Context, arg InsertCookieSessionParams) (uuid.UUID, error) {
+	row := q.db.QueryRow(ctx, insertCookieSession,
+		arg.UserID,
+		arg.SessionToken,
+		arg.CsrfToken,
+		arg.Platform,
+		arg.ExpiresAt,
+	)
+	var id uuid.UUID
+	err := row.Scan(&id)
+	return id, err
+}
+
+const insertJWTSession = `-- name: InsertJWTSession :one
+INSERT INTO sessions (user_id, platform, expires_at) 
+VALUES ($1, $2, $3) 
+RETURNING id
+`
+
+type InsertJWTSessionParams struct {
+	UserID    uuid.UUID `json:"user_id"`
+	Platform  string    `json:"platform"`
+	ExpiresAt time.Time `json:"expires_at"`
+}
+
+func (q *Queries) InsertJWTSession(ctx context.Context, arg InsertJWTSessionParams) (uuid.UUID, error) {
+	row := q.db.QueryRow(ctx, insertJWTSession, arg.UserID, arg.Platform, arg.ExpiresAt)
+	var id uuid.UUID
+	err := row.Scan(&id)
+	return id, err
+}
+
+const insertRefreshToken = `-- name: InsertRefreshToken :exec
+INSERT INTO refresh_tokens (session_id, refresh_token, expires_at) 
+VALUES ($1, $2, $3)
+`
+
+type InsertRefreshTokenParams struct {
+	SessionID    pgtype.UUID `json:"session_id"`
+	RefreshToken string      `json:"refresh_token"`
+	ExpiresAt    time.Time   `json:"expires_at"`
+}
+
+func (q *Queries) InsertRefreshToken(ctx context.Context, arg InsertRefreshTokenParams) error {
+	_, err := q.db.Exec(ctx, insertRefreshToken, arg.SessionID, arg.RefreshToken, arg.ExpiresAt)
+	return err
+}
+
+const updateCookieSession = `-- name: UpdateCookieSession :execrows
+UPDATE sessions 
+SET session_token=$1, csrf_token=$2, expires_at=$3 
+WHERE id=$4 AND expires_at > NOW()
+`
+
+type UpdateCookieSessionParams struct {
+	SessionToken pgtype.Text `json:"session_token"`
+	CsrfToken    pgtype.Text `json:"csrf_token"`
+	ExpiresAt    time.Time   `json:"expires_at"`
+	ID           uuid.UUID   `json:"id"`
+}
+
+func (q *Queries) UpdateCookieSession(ctx context.Context, arg UpdateCookieSessionParams) (int64, error) {
+	result, err := q.db.Exec(ctx, updateCookieSession,
+		arg.SessionToken,
+		arg.CsrfToken,
+		arg.ExpiresAt,
+		arg.ID,
+	)
+	if err != nil {
+		return 0, err
+	}
+	return result.RowsAffected(), nil
+}
+
+const updateJWTSession = `-- name: UpdateJWTSession :execrows
+UPDATE sessions 
+SET expires_at=$1 
+WHERE id=$2
+`
+
+type UpdateJWTSessionParams struct {
+	ExpiresAt time.Time `json:"expires_at"`
+	ID        uuid.UUID `json:"id"`
+}
+
+func (q *Queries) UpdateJWTSession(ctx context.Context, arg UpdateJWTSessionParams) (int64, error) {
+	result, err := q.db.Exec(ctx, updateJWTSession, arg.ExpiresAt, arg.ID)
+	if err != nil {
+		return 0, err
+	}
+	return result.RowsAffected(), nil
+}
+
+const updateRefreshToken = `-- name: UpdateRefreshToken :execrows
+UPDATE refresh_tokens 
+SET refresh_token=$1, expires_at=$2 
+WHERE refresh_token=$3 AND session_id=$4 AND expires_at > NOW()
+`
+
+type UpdateRefreshTokenParams struct {
+	RefreshToken   string      `json:"refresh_token"`
+	ExpiresAt      time.Time   `json:"expires_at"`
+	RefreshToken_2 string      `json:"refresh_token_2"`
+	SessionID      pgtype.UUID `json:"session_id"`
+}
+
+func (q *Queries) UpdateRefreshToken(ctx context.Context, arg UpdateRefreshTokenParams) (int64, error) {
+	result, err := q.db.Exec(ctx, updateRefreshToken,
+		arg.RefreshToken,
+		arg.ExpiresAt,
+		arg.RefreshToken_2,
+		arg.SessionID,
+	)
+	if err != nil {
+		return 0, err
+	}
+	return result.RowsAffected(), nil
 }
