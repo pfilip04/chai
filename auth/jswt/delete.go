@@ -6,6 +6,7 @@ import (
 	"net/http"
 	"strings"
 
+	"github.com/pfilip04/chai/database/postgresql/repository"
 	"github.com/pfilip04/chai/errs"
 	"github.com/pfilip04/chai/utils"
 )
@@ -33,12 +34,7 @@ func (j *JWTAuth) Delete(w http.ResponseWriter, r *http.Request) {
 	ctxA, cancelA := context.WithTimeout(r.Context(), j.QueryTimeout)
 	defer cancelA()
 
-	_, err = j.DB.Exec(ctxA,
-		`DELETE FROM sessions 
-		WHERE id=$1 AND user_id=$2`,
-		sessionID,
-		userID,
-	)
+	tx, err := j.DB.Begin(ctxA)
 
 	if err != nil {
 
@@ -46,14 +42,14 @@ func (j *JWTAuth) Delete(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	ctxB, cancelB := context.WithTimeout(r.Context(), j.QueryTimeout)
-	defer cancelB()
+	defer tx.Rollback(ctxA)
 
-	_, err = j.DB.Exec(ctxB,
-		`DELETE FROM refresh_tokens 
-		WHERE session_id=$1`,
-		sessionID,
-	)
+	repo := repository.New(tx)
+
+	rows, err := repo.DeleteJWTSession(ctxA, repository.DeleteJWTSessionParams{
+		ID:     sessionID,
+		UserID: userID,
+	})
 
 	if err != nil {
 
@@ -61,16 +57,41 @@ func (j *JWTAuth) Delete(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	ctxC, cancelC := context.WithTimeout(r.Context(), j.QueryTimeout)
-	defer cancelC()
+	if rows == 0 {
 
-	_, err = j.DB.Exec(ctxC,
-		`DELETE FROM users 
-		WHERE id=$1`,
-		userID,
-	)
+		http.Error(w, "No session found/expired", http.StatusUnauthorized)
+		return
+	}
+
+	rows, err = repo.DeleteRefreshToken(ctxA, sessionID)
 
 	if err != nil {
+
+		http.Error(w, errs.DatabaseError.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	if rows == 0 {
+
+		http.Error(w, "No refresh token found/expired", http.StatusUnauthorized)
+		return
+	}
+
+	rows, err = repo.DeleteUser(ctxA, userID)
+
+	if err != nil {
+
+		http.Error(w, errs.DatabaseError.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	if rows == 0 {
+
+		http.Error(w, "No user found to delete", http.StatusUnauthorized)
+		return
+	}
+
+	if err := tx.Commit(ctxA); err != nil {
 
 		http.Error(w, errs.DatabaseError.Error(), http.StatusInternalServerError)
 		return

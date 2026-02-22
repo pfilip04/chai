@@ -6,8 +6,7 @@ import (
 	"net/http"
 	"time"
 
-	"github.com/google/uuid"
-
+	"github.com/pfilip04/chai/database/postgresql/repository"
 	"github.com/pfilip04/chai/errs"
 	"github.com/pfilip04/chai/utils"
 )
@@ -20,55 +19,16 @@ func (j *JWTAuth) Login(w http.ResponseWriter, r *http.Request) {
 	username := r.FormValue("username")
 	password := r.FormValue("password")
 
-	var sessionID uuid.UUID
-	var userID uuid.UUID
-	var passwordHash string
-
 	ctxA, cancelA := context.WithTimeout(r.Context(), j.QueryTimeout)
 	defer cancelA()
 
-	err := j.DB.QueryRow(ctxA,
-		`SELECT id, password_hash FROM users 
-		WHERE username=$1`,
-		username,
-	).Scan(&userID, &passwordHash)
+	repo := repository.New(j.DB)
 
-	if err != nil {
+	User, err := repo.GetIdAndPass(ctxA, username)
 
-		http.Error(w, "Invalid username", http.StatusUnauthorized)
-		return
-	}
+	if err != nil || !utils.CheckPasswordHash(password, User.PasswordHash) {
 
-	if !utils.CheckPasswordHash(password, passwordHash) {
-		http.Error(w, "Invalid password", http.StatusUnauthorized)
-		return
-	}
-
-	refreshExpiresAt := time.Now().UTC().Add(j.refreshTokenExpiration)
-
-	ctxB, cancelB := context.WithTimeout(r.Context(), j.QueryTimeout)
-	defer cancelB()
-
-	err = j.DB.QueryRow(ctxB,
-		`INSERT INTO sessions (user_id, platform, expires_at) 
-		VALUES ($1, $2, $3) 
-		RETURNING id`,
-		userID,
-		"mobile",
-		refreshExpiresAt,
-	).Scan(&sessionID)
-
-	if err != nil {
-
-		http.Error(w, errs.DatabaseError.Error(), http.StatusInternalServerError)
-		return
-	}
-
-	tokenString, err := utils.CreateJWT(j.secret, userID, sessionID, j.issuer, j.jwtTokenExpiration)
-
-	if err != nil {
-
-		http.Error(w, "Couldn't create JWT", http.StatusInternalServerError)
+		http.Error(w, "Invalid username or password", http.StatusUnauthorized)
 		return
 	}
 
@@ -82,18 +42,56 @@ func (j *JWTAuth) Login(w http.ResponseWriter, r *http.Request) {
 
 	hashedRefresh := utils.HashToken(refreshToken)
 
-	ctxC, cancelC := context.WithTimeout(r.Context(), j.QueryTimeout)
-	defer cancelC()
+	refreshExpiresAt := time.Now().UTC().Add(j.refreshTokenExpiration)
 
-	_, err = j.DB.Exec(ctxC,
-		`INSERT INTO refresh_tokens (session_id, refresh_token, expires_at) 
-		VALUES ($1, $2, $3)`,
-		sessionID,
-		hashedRefresh,
-		refreshExpiresAt,
-	)
+	ctxB, cancelB := context.WithTimeout(r.Context(), j.QueryTimeout)
+	defer cancelB()
+
+	tx, err := j.DB.Begin(ctxB)
 
 	if err != nil {
+
+		http.Error(w, errs.DatabaseError.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	defer tx.Rollback(ctxB)
+
+	repo = repository.New(tx)
+
+	sessionID, err := repo.InsertJWTSession(ctxB, repository.InsertJWTSessionParams{
+		UserID:    User.ID,
+		Platform:  "mobile",
+		ExpiresAt: refreshExpiresAt,
+	})
+
+	if err != nil {
+
+		http.Error(w, errs.DatabaseError.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	tokenString, err := utils.CreateJWT(j.secret, User.ID, sessionID, j.issuer, j.jwtTokenExpiration)
+
+	if err != nil {
+
+		http.Error(w, "Couldn't create JWT", http.StatusInternalServerError)
+		return
+	}
+
+	err = repo.InsertRefreshToken(ctxB, repository.InsertRefreshTokenParams{
+		SessionID:    sessionID,
+		RefreshToken: hashedRefresh,
+		ExpiresAt:    refreshExpiresAt,
+	})
+
+	if err != nil {
+
+		http.Error(w, errs.DatabaseError.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	if err := tx.Commit(ctxB); err != nil {
 
 		http.Error(w, errs.DatabaseError.Error(), http.StatusInternalServerError)
 		return

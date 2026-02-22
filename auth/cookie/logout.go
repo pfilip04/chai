@@ -6,8 +6,7 @@ import (
 	"net/http"
 	"time"
 
-	"github.com/google/uuid"
-
+	"github.com/pfilip04/chai/database/postgresql/repository"
 	"github.com/pfilip04/chai/errs"
 	"github.com/pfilip04/chai/utils"
 )
@@ -36,17 +35,10 @@ func (c *CookieAuth) Logout(w http.ResponseWriter, r *http.Request) {
 
 	hashedSessionToken := utils.HashToken(sessionCookie.Value)
 
-	var sessionID uuid.UUID
-
 	ctxA, cancelA := context.WithTimeout(r.Context(), c.QueryTimeout)
 	defer cancelA()
 
-	err = c.DB.QueryRow(ctxA,
-		`DELETE FROM sessions 
-		WHERE session_token=$1 
-		RETURNING id`,
-		hashedSessionToken,
-	).Scan(&sessionID)
+	tx, err := c.DB.Begin(ctxA)
 
 	if err != nil {
 
@@ -54,13 +46,33 @@ func (c *CookieAuth) Logout(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	_, err = c.DB.Exec(ctxA,
-		`DELETE FROM refresh_tokens 
-		WHERE session_id=$1`,
-		sessionID,
-	)
+	defer tx.Rollback(ctxA)
+
+	repo := repository.New(tx)
+
+	sessionID, err := repo.DeleteCookieSession(ctxA, hashedSessionToken)
 
 	if err != nil {
+
+		http.Error(w, errs.DatabaseError.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	rows, err := repo.DeleteRefreshToken(ctxA, sessionID)
+
+	if err != nil {
+
+		http.Error(w, errs.DatabaseError.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	if rows == 0 {
+
+		http.Error(w, "No refresh token found/expired", http.StatusUnauthorized)
+		return
+	}
+
+	if err := tx.Commit(ctxA); err != nil {
 
 		http.Error(w, errs.DatabaseError.Error(), http.StatusInternalServerError)
 		return

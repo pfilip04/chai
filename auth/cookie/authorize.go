@@ -6,6 +6,7 @@ import (
 
 	"github.com/google/uuid"
 
+	"github.com/pfilip04/chai/database/postgresql/repository"
 	"github.com/pfilip04/chai/errs"
 	"github.com/pfilip04/chai/utils"
 )
@@ -24,22 +25,18 @@ func (c *CookieAuth) SoftAuthorize(r *http.Request) (uuid.UUID, error) {
 
 	hashedSessionToken := utils.HashToken(st.Value)
 
-	var userID uuid.UUID
-
 	ctxA, cancelA := context.WithTimeout(r.Context(), c.QueryTimeout)
 	defer cancelA()
 
-	err = c.DB.QueryRow(ctxA,
-		`SELECT user_id FROM sessions 
-		WHERE session_token=$1 AND expires_at > NOW()`,
-		hashedSessionToken,
-	).Scan(&userID)
+	repo := repository.New(c.DB)
+
+	IdAndCsrf, err := repo.GetUserIdAndCsrfToken(ctxA, hashedSessionToken)
 
 	if err != nil {
 		return uuid.Nil, errs.AuthError
 	}
 
-	return userID, nil
+	return IdAndCsrf.UserID, nil
 }
 
 // Auth for POST/PATCH/PUT/DELETE...
@@ -59,25 +56,20 @@ func (c *CookieAuth) HardAuthorize(r *http.Request) (uuid.UUID, error) {
 		return uuid.Nil, errs.AuthError
 	}
 
-	var dbCsrfToken string
-	var userID uuid.UUID
-
 	ctxA, cancelA := context.WithTimeout(r.Context(), c.QueryTimeout)
 	defer cancelA()
 
-	err = c.DB.QueryRow(ctxA,
-		`SELECT user_id, csrf_token FROM sessions 
-		WHERE session_token=$1 AND expires_at > NOW()`,
-		hashedSessionToken,
-	).Scan(&userID, &dbCsrfToken)
+	repo := repository.New(c.DB)
+
+	IdAndCsrf, err := repo.GetUserIdAndCsrfToken(ctxA, hashedSessionToken)
 
 	if err != nil {
 		return uuid.Nil, errs.AuthError
 	}
 
-	if !utils.CheckToken(csrfToken, dbCsrfToken) {
+	if !utils.CheckToken(csrfToken, IdAndCsrf.CsrfToken) {
 		return uuid.Nil, errs.AuthError
 	}
 
-	return userID, nil
+	return IdAndCsrf.UserID, nil
 }

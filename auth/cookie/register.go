@@ -60,10 +60,10 @@ func (c *CookieAuth) Register(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	repo := repository.New(c.DB)
+
 	ctxA, cancelA := context.WithTimeout(r.Context(), c.QueryTimeout)
 	defer cancelA()
-
-	repo := repository.New(c.DB)
 
 	err = repo.CreateUser(ctxA, repository.CreateUserParams{
 		Username:     username,

@@ -10,11 +10,34 @@ sql:
         out: "repository"
         sql_package: "pgx/v5"
         overrides:
+
         - db_type: "uuid"
+          nullable: true
           go_type:
             import: "github.com/google/uuid"
             type: "UUID"
+        - db_type: "uuid"
+          nullable: false
+          go_type:
+            import: "github.com/google/uuid"
+            type: "UUID"
+
         - db_type: "timestamptz"
+          nullable: true
           go_type:
             import: "time"
             type: "Time"
+        - db_type: "timestamptz"
+          nullable: false
+          go_type:
+            import: "time"
+            type: "Time"
+
+        - db_type: "text"
+          nullable: true
+          go_type:
+            type: "string"
+        - db_type: "text"
+          nullable: false
+          go_type:
+            type: "string"

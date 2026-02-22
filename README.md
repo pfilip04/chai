@@ -5,16 +5,15 @@ Authentication API written in Go using Chi for a PostgreSQL database.
 ## Easy implementation and setup
 
 - Configure with `JSON` and `.env` (you can check out examples)
-- Just start it
-- Table creation on startup
-- Will deal with Redis and migrations (migranes...) in the future
+- Use golang-migrate commands to force db version(to generate table)
+- Start it and use available API endpoints that you can see in router/chi.go
 
 ## Notice
 
 ### Tested with Postman  
 But watch out for:
 
-- Postgres version matters
+- Postgres version
 - Every, even subtle changes can crash the DB
 - Check what is passed through as cookies vs what needs to be manually added to headers
 - Some errors are frontend-oriented; it doesn't mean something went wrong, just that something needs to be sorted before full implementation
@@ -23,17 +22,18 @@ But watch out for:
 
 ## Future improvements
 
-- DB transactions for safety
-- Adding Redis and figuring out DB flexibility + migrations
-- Rate limiting and IP checking
 - Email verification
+- Adding Redis
+- Rate limiting and IP checking, CORS
 - Other ideas may come to mind...
 
 ## Run it
 
-1. Make sure you have PostgreSQL installed and know the username and password  
-2. Have the database created and know its name  
+1. Make sure you have PostgreSQL installed and know the username and password
+2. Have the database created and know its name
+3. You can create the database tables manually (schema inside database/postgresql/migrations/1_init.up) but using golang-migrate is recommended
 3. Configure your `.env` and `JSON` files
+4. Run
 
 ```bash
 go run main.go
@@ -43,7 +43,6 @@ If you see:
 
 ```text
 "Database ok"
-"Tables created/exist"
 ```
 
 everything is fine.

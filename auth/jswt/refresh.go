@@ -6,8 +6,7 @@ import (
 	"net/http"
 	"time"
 
-	"github.com/google/uuid"
-
+	"github.com/pfilip04/chai/database/postgresql/repository"
 	"github.com/pfilip04/chai/errs"
 	"github.com/pfilip04/chai/utils"
 )
@@ -23,19 +22,14 @@ func (j *JWTAuth) Refresh(w http.ResponseWriter, r *http.Request) {
 
 	hashedRefreshToken := utils.HashToken(rf)
 
-	var sessionID uuid.UUID
-	var userID uuid.UUID
-
 	refreshExpiresAt := time.Now().UTC().Add(j.refreshTokenExpiration)
 
 	ctxA, cancelA := context.WithTimeout(r.Context(), j.QueryTimeout)
 	defer cancelA()
 
-	err := j.DB.QueryRow(ctxA,
-		`SELECT session_id FROM refresh_tokens 
-		WHERE refresh_token=$1 AND expires_at > NOW()`,
-		hashedRefreshToken,
-	).Scan(&sessionID)
+	repo := repository.New(j.DB)
+
+	sessionID, err := repo.GetSessionIdByRefresh(ctxA, hashedRefreshToken)
 
 	if err != nil {
 
@@ -46,11 +40,7 @@ func (j *JWTAuth) Refresh(w http.ResponseWriter, r *http.Request) {
 	ctxB, cancelB := context.WithTimeout(r.Context(), j.QueryTimeout)
 	defer cancelB()
 
-	err = j.DB.QueryRow(ctxB,
-		`SELECT user_id FROM sessions 
-		WHERE id=$1 AND expires_at > NOW()`,
-		sessionID,
-	).Scan(&userID)
+	userID, err := repo.GetUserIdBySessionId(ctxB, sessionID)
 
 	if err != nil {
 
@@ -66,23 +56,6 @@ func (j *JWTAuth) Refresh(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	ctxC, cancelC := context.WithTimeout(r.Context(), j.QueryTimeout)
-	defer cancelC()
-
-	_, err = j.DB.Exec(ctxC,
-		`UPDATE sessions 
-		SET expires_at=$1 
-		WHERE id=$2`,
-		refreshExpiresAt,
-		sessionID,
-	)
-
-	if err != nil {
-
-		http.Error(w, "Couldn't refresh tokens", http.StatusUnauthorized)
-		return
-	}
-
 	newRefreshToken, err := utils.GenerateToken(64)
 
 	if err != nil {
@@ -93,18 +66,10 @@ func (j *JWTAuth) Refresh(w http.ResponseWriter, r *http.Request) {
 
 	hashedNewRefresh := utils.HashToken(newRefreshToken)
 
-	ctxD, cancelD := context.WithTimeout(r.Context(), j.QueryTimeout)
-	defer cancelD()
+	ctxC, cancelC := context.WithTimeout(r.Context(), j.QueryTimeout)
+	defer cancelC()
 
-	result, err := j.DB.Exec(ctxD,
-		`UPDATE refresh_tokens 
-		SET refresh_token=$1, expires_at=$2 
-		WHERE refresh_token=$3 AND session_id=$4 AND expires_at > NOW()`,
-		hashedNewRefresh,
-		refreshExpiresAt,
-		hashedRefreshToken,
-		sessionID,
-	)
+	tx, err := j.DB.Begin(ctxC)
 
 	if err != nil {
 
@@ -112,10 +77,47 @@ func (j *JWTAuth) Refresh(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	rows := result.RowsAffected()
+	defer tx.Rollback(ctxC)
+
+	repo = repository.New(tx)
+
+	rows, err := repo.UpdateJWTSession(ctxC, repository.UpdateJWTSessionParams{
+		ExpiresAt: refreshExpiresAt,
+		ID:        sessionID,
+	})
+
+	if err != nil {
+
+		http.Error(w, "Couldn't refresh tokens", http.StatusUnauthorized)
+		return
+	}
+
+	if rows == 0 {
+		http.Error(w, "Couldn't find session", http.StatusUnauthorized)
+		return
+	}
+
+	rows, err = repo.UpdateRefreshToken(ctxC, repository.UpdateRefreshTokenParams{
+		RefreshToken:   hashedNewRefresh,
+		ExpiresAt:      refreshExpiresAt,
+		RefreshToken_2: hashedRefreshToken,
+		SessionID:      sessionID,
+	})
+
+	if err != nil {
+
+		http.Error(w, errs.DatabaseError.Error(), http.StatusInternalServerError)
+		return
+	}
 
 	if rows == 0 {
 		http.Error(w, "Invalid or expired refresh token", http.StatusUnauthorized)
+		return
+	}
+
+	if err := tx.Commit(ctxC); err != nil {
+
+		http.Error(w, errs.DatabaseError.Error(), http.StatusInternalServerError)
 		return
 	}
 

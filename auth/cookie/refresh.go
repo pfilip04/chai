@@ -6,8 +6,7 @@ import (
 	"net/http"
 	"time"
 
-	"github.com/google/uuid"
-
+	"github.com/pfilip04/chai/database/postgresql/repository"
 	"github.com/pfilip04/chai/errs"
 	"github.com/pfilip04/chai/utils"
 )
@@ -24,39 +23,19 @@ func (c *CookieAuth) Refresh(w http.ResponseWriter, r *http.Request) {
 
 	hashedRefreshToken := utils.HashToken(rf.Value)
 
-	var sessionID uuid.UUID
-	var userID uuid.UUID
-
 	sessionExpiresAt := time.Now().UTC().Add(c.sessionTokenExpiration)
 	refreshExpiresAt := time.Now().UTC().Add(c.refreshTokenExpiration)
 
 	ctxA, cancelA := context.WithTimeout(r.Context(), c.QueryTimeout)
 	defer cancelA()
 
-	err = c.DB.QueryRow(ctxA,
-		`SELECT session_id FROM refresh_tokens 
-		WHERE refresh_token=$1 AND expires_at > NOW()`,
-		hashedRefreshToken,
-	).Scan(&sessionID)
+	repo := repository.New(c.DB)
+
+	sessionID, err := repo.GetSessionIdByRefresh(ctxA, hashedRefreshToken)
 
 	if err != nil {
 
 		http.Error(w, "Couldn't find refresh", http.StatusUnauthorized)
-		return
-	}
-
-	ctxB, cancelB := context.WithTimeout(r.Context(), c.QueryTimeout)
-	defer cancelB()
-
-	err = c.DB.QueryRow(ctxB,
-		`SELECT user_id FROM sessions 
-		WHERE id=$1 AND expires_at > NOW()`,
-		sessionID,
-	).Scan(&userID)
-
-	if err != nil {
-
-		http.Error(w, "Couldn't find userID", http.StatusUnauthorized)
 		return
 	}
 
@@ -76,28 +55,6 @@ func (c *CookieAuth) Refresh(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	hashedSessionToken := utils.HashToken(sessionToken)
-	hashedCsrfToken := utils.HashToken(csrfToken)
-
-	ctxC, cancelC := context.WithTimeout(r.Context(), c.QueryTimeout)
-	defer cancelC()
-
-	_, err = c.DB.Exec(ctxC,
-		`UPDATE sessions 
-		SET session_token=$1, csrf_token=$2, expires_at=$3 
-		WHERE id=$4 AND expires_at > NOW()`,
-		hashedSessionToken,
-		hashedCsrfToken,
-		refreshExpiresAt,
-		sessionID,
-	)
-
-	if err != nil {
-
-		http.Error(w, "Couldn't refresh tokens", http.StatusUnauthorized)
-		return
-	}
-
 	newRefreshToken, err := utils.GenerateToken(64)
 
 	if err != nil {
@@ -106,20 +63,14 @@ func (c *CookieAuth) Refresh(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	hashedSessionToken := utils.HashToken(sessionToken)
+	hashedCsrfToken := utils.HashToken(csrfToken)
 	hashedNewRefresh := utils.HashToken(newRefreshToken)
 
-	ctxD, cancelD := context.WithTimeout(r.Context(), c.QueryTimeout)
-	defer cancelD()
+	ctxB, cancelB := context.WithTimeout(r.Context(), c.QueryTimeout)
+	defer cancelB()
 
-	result, err := c.DB.Exec(ctxD,
-		`UPDATE refresh_tokens 
-		SET refresh_token=$1, expires_at=$2 
-		WHERE refresh_token=$3 AND session_id=$4 AND expires_at > NOW()`,
-		hashedNewRefresh,
-		refreshExpiresAt,
-		hashedRefreshToken,
-		sessionID,
-	)
+	tx, err := c.DB.Begin(ctxB)
 
 	if err != nil {
 
@@ -127,10 +78,49 @@ func (c *CookieAuth) Refresh(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	rows := result.RowsAffected()
+	defer tx.Rollback(ctxB)
+
+	repo = repository.New(tx)
+
+	rows, err := repo.UpdateCookieSession(ctxB, repository.UpdateCookieSessionParams{
+		SessionToken: hashedSessionToken,
+		CsrfToken:    hashedCsrfToken,
+		ExpiresAt:    refreshExpiresAt,
+		ID:           sessionID,
+	})
+
+	if err != nil {
+
+		http.Error(w, "Couldn't refresh tokens", http.StatusUnauthorized)
+		return
+	}
+
+	if rows == 0 {
+		http.Error(w, "Couldn't find session", http.StatusUnauthorized)
+		return
+	}
+
+	rows, err = repo.UpdateRefreshToken(ctxB, repository.UpdateRefreshTokenParams{
+		RefreshToken:   hashedNewRefresh,
+		ExpiresAt:      refreshExpiresAt,
+		RefreshToken_2: hashedRefreshToken,
+		SessionID:      sessionID,
+	})
+
+	if err != nil {
+
+		http.Error(w, errs.DatabaseError.Error(), http.StatusInternalServerError)
+		return
+	}
 
 	if rows == 0 {
 		http.Error(w, "Invalid or expired refresh token", http.StatusUnauthorized)
+		return
+	}
+
+	if err := tx.Commit(ctxB); err != nil {
+
+		http.Error(w, errs.DatabaseError.Error(), http.StatusInternalServerError)
 		return
 	}
 

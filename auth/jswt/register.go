@@ -60,10 +60,10 @@ func (j *JWTAuth) Register(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	repo := repository.New(j.DB)
+
 	ctxA, cancelA := context.WithTimeout(r.Context(), j.QueryTimeout)
 	defer cancelA()
-
-	repo := repository.New(j.DB)
 
 	err = repo.CreateUser(ctxA, repository.CreateUserParams{
 		Username:     username,

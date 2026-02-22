@@ -6,8 +6,7 @@ import (
 	"net/http"
 	"time"
 
-	"github.com/google/uuid"
-
+	"github.com/pfilip04/chai/database/postgresql/repository"
 	"github.com/pfilip04/chai/errs"
 	"github.com/pfilip04/chai/utils"
 )
@@ -20,19 +19,14 @@ func (c *CookieAuth) Login(w http.ResponseWriter, r *http.Request) {
 	username := r.FormValue("username")
 	password := r.FormValue("password")
 
-	var userID uuid.UUID
-	var passwordHash string
+	repo := repository.New(c.DB)
 
 	ctxA, cancelA := context.WithTimeout(r.Context(), c.QueryTimeout)
 	defer cancelA()
 
-	err := c.DB.QueryRow(ctxA,
-		`SELECT id, password_hash FROM users 
-		WHERE username=$1`,
-		username,
-	).Scan(&userID, &passwordHash)
+	User, err := repo.GetIdAndPass(ctxA, username)
 
-	if err != nil || !utils.CheckPasswordHash(password, passwordHash) {
+	if err != nil || !utils.CheckPasswordHash(password, User.PasswordHash) {
 
 		http.Error(w, "Invalid username or password", http.StatusUnauthorized)
 		return
@@ -57,35 +51,6 @@ func (c *CookieAuth) Login(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	hashedSessionToken := utils.HashToken(sessionToken)
-	hashedCsrfToken := utils.HashToken(csrfToken)
-
-	var sessionID uuid.UUID
-
-	sessionExpiresAt := time.Now().UTC().Add(c.sessionTokenExpiration)
-	refreshExpiresAt := time.Now().UTC().Add(c.refreshTokenExpiration)
-
-	ctxB, cancelB := context.WithTimeout(r.Context(), c.QueryTimeout)
-	defer cancelB()
-
-	err = c.DB.QueryRow(ctxB,
-		`INSERT INTO sessions 
-        (user_id, session_token, csrf_token, platform, expires_at) 
-        VALUES ($1, $2, $3, $4, $5) 
-		RETURNING id`,
-		userID,
-		hashedSessionToken,
-		hashedCsrfToken,
-		"web",
-		refreshExpiresAt,
-	).Scan(&sessionID)
-
-	if err != nil {
-
-		http.Error(w, errs.DatabaseError.Error(), http.StatusInternalServerError)
-		return
-	}
-
 	refreshToken, err := utils.GenerateToken(64)
 
 	if err != nil {
@@ -94,21 +59,55 @@ func (c *CookieAuth) Login(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	hashedSessionToken := utils.HashToken(sessionToken)
+	hashedCsrfToken := utils.HashToken(csrfToken)
 	hashedRefresh := utils.HashToken(refreshToken)
 
-	ctxC, cancelC := context.WithTimeout(r.Context(), c.QueryTimeout)
-	defer cancelC()
+	sessionExpiresAt := time.Now().UTC().Add(c.sessionTokenExpiration)
+	refreshExpiresAt := time.Now().UTC().Add(c.refreshTokenExpiration)
 
-	_, err = c.DB.Exec(ctxC,
-		`INSERT INTO refresh_tokens (session_id, refresh_token, expires_at) 
-		VALUES ($1, $2, $3)`,
-		sessionID,
-		hashedRefresh,
-		refreshExpiresAt,
-	)
+	ctxB, cancelB := context.WithTimeout(r.Context(), c.QueryTimeout)
+	defer cancelB()
+
+	tx, err := c.DB.Begin(ctxB)
 
 	if err != nil {
 
+		http.Error(w, errs.DatabaseError.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	defer tx.Rollback(ctxB)
+
+	repo = repository.New(tx)
+
+	sessionID, err := repo.InsertCookieSession(ctxB, repository.InsertCookieSessionParams{
+		UserID:       User.ID,
+		SessionToken: hashedSessionToken,
+		CsrfToken:    hashedCsrfToken,
+		Platform:     "web",
+		ExpiresAt:    refreshExpiresAt,
+	})
+
+	if err != nil {
+
+		http.Error(w, errs.DatabaseError.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	err = repo.InsertRefreshToken(ctxB, repository.InsertRefreshTokenParams{
+		SessionID:    sessionID,
+		RefreshToken: hashedRefresh,
+		ExpiresAt:    refreshExpiresAt,
+	})
+
+	if err != nil {
+
+		http.Error(w, errs.DatabaseError.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	if err := tx.Commit(ctxB); err != nil {
 		http.Error(w, errs.DatabaseError.Error(), http.StatusInternalServerError)
 		return
 	}

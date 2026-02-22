@@ -10,7 +10,6 @@ import (
 	"time"
 
 	"github.com/google/uuid"
-	"github.com/jackc/pgx/v5/pgtype"
 )
 
 const countEmail = `-- name: CountEmail :one
@@ -59,7 +58,7 @@ WHERE session_token=$1
 RETURNING id
 `
 
-func (q *Queries) DeleteCookieSession(ctx context.Context, sessionToken pgtype.Text) (uuid.UUID, error) {
+func (q *Queries) DeleteCookieSession(ctx context.Context, sessionToken string) (uuid.UUID, error) {
 	row := q.db.QueryRow(ctx, deleteCookieSession, sessionToken)
 	var id uuid.UUID
 	err := row.Scan(&id)
@@ -89,7 +88,7 @@ DELETE FROM refresh_tokens
 WHERE session_id=$1
 `
 
-func (q *Queries) DeleteRefreshToken(ctx context.Context, sessionID pgtype.UUID) (int64, error) {
+func (q *Queries) DeleteRefreshToken(ctx context.Context, sessionID uuid.UUID) (int64, error) {
 	result, err := q.db.Exec(ctx, deleteRefreshToken, sessionID)
 	if err != nil {
 		return 0, err
@@ -132,9 +131,9 @@ SELECT session_id FROM refresh_tokens
 WHERE refresh_token=$1 AND expires_at > NOW()
 `
 
-func (q *Queries) GetSessionIdByRefresh(ctx context.Context, refreshToken string) (pgtype.UUID, error) {
+func (q *Queries) GetSessionIdByRefresh(ctx context.Context, refreshToken string) (uuid.UUID, error) {
 	row := q.db.QueryRow(ctx, getSessionIdByRefresh, refreshToken)
-	var session_id pgtype.UUID
+	var session_id uuid.UUID
 	err := row.Scan(&session_id)
 	return session_id, err
 }
@@ -145,11 +144,11 @@ WHERE session_token=$1 AND expires_at > NOW()
 `
 
 type GetUserIdAndCsrfTokenRow struct {
-	UserID    uuid.UUID   `json:"user_id"`
-	CsrfToken pgtype.Text `json:"csrf_token"`
+	UserID    uuid.UUID `json:"user_id"`
+	CsrfToken string    `json:"csrf_token"`
 }
 
-func (q *Queries) GetUserIdAndCsrfToken(ctx context.Context, sessionToken pgtype.Text) (GetUserIdAndCsrfTokenRow, error) {
+func (q *Queries) GetUserIdAndCsrfToken(ctx context.Context, sessionToken string) (GetUserIdAndCsrfTokenRow, error) {
 	row := q.db.QueryRow(ctx, getUserIdAndCsrfToken, sessionToken)
 	var i GetUserIdAndCsrfTokenRow
 	err := row.Scan(&i.UserID, &i.CsrfToken)
@@ -175,11 +174,11 @@ RETURNING id
 `
 
 type InsertCookieSessionParams struct {
-	UserID       uuid.UUID   `json:"user_id"`
-	SessionToken pgtype.Text `json:"session_token"`
-	CsrfToken    pgtype.Text `json:"csrf_token"`
-	Platform     string      `json:"platform"`
-	ExpiresAt    time.Time   `json:"expires_at"`
+	UserID       uuid.UUID `json:"user_id"`
+	SessionToken string    `json:"session_token"`
+	CsrfToken    string    `json:"csrf_token"`
+	Platform     string    `json:"platform"`
+	ExpiresAt    time.Time `json:"expires_at"`
 }
 
 func (q *Queries) InsertCookieSession(ctx context.Context, arg InsertCookieSessionParams) (uuid.UUID, error) {
@@ -220,9 +219,9 @@ VALUES ($1, $2, $3)
 `
 
 type InsertRefreshTokenParams struct {
-	SessionID    pgtype.UUID `json:"session_id"`
-	RefreshToken string      `json:"refresh_token"`
-	ExpiresAt    time.Time   `json:"expires_at"`
+	SessionID    uuid.UUID `json:"session_id"`
+	RefreshToken string    `json:"refresh_token"`
+	ExpiresAt    time.Time `json:"expires_at"`
 }
 
 func (q *Queries) InsertRefreshToken(ctx context.Context, arg InsertRefreshTokenParams) error {
@@ -237,10 +236,10 @@ WHERE id=$4 AND expires_at > NOW()
 `
 
 type UpdateCookieSessionParams struct {
-	SessionToken pgtype.Text `json:"session_token"`
-	CsrfToken    pgtype.Text `json:"csrf_token"`
-	ExpiresAt    time.Time   `json:"expires_at"`
-	ID           uuid.UUID   `json:"id"`
+	SessionToken string    `json:"session_token"`
+	CsrfToken    string    `json:"csrf_token"`
+	ExpiresAt    time.Time `json:"expires_at"`
+	ID           uuid.UUID `json:"id"`
 }
 
 func (q *Queries) UpdateCookieSession(ctx context.Context, arg UpdateCookieSessionParams) (int64, error) {
@@ -282,10 +281,10 @@ WHERE refresh_token=$3 AND session_id=$4 AND expires_at > NOW()
 `
 
 type UpdateRefreshTokenParams struct {
-	RefreshToken   string      `json:"refresh_token"`
-	ExpiresAt      time.Time   `json:"expires_at"`
-	RefreshToken_2 string      `json:"refresh_token_2"`
-	SessionID      pgtype.UUID `json:"session_id"`
+	RefreshToken   string    `json:"refresh_token"`
+	ExpiresAt      time.Time `json:"expires_at"`
+	RefreshToken_2 string    `json:"refresh_token_2"`
+	SessionID      uuid.UUID `json:"session_id"`
 }
 
 func (q *Queries) UpdateRefreshToken(ctx context.Context, arg UpdateRefreshTokenParams) (int64, error) {

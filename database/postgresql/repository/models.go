@@ -9,26 +9,25 @@ import (
 	"time"
 
 	"github.com/google/uuid"
-	"github.com/jackc/pgx/v5/pgtype"
 )
 
 type RefreshToken struct {
-	ID           uuid.UUID   `json:"id"`
-	SessionID    pgtype.UUID `json:"session_id"`
-	RefreshToken string      `json:"refresh_token"`
-	ExpiresAt    time.Time   `json:"expires_at"`
-	ReplacedBy   pgtype.UUID `json:"replaced_by"`
-	CreatedAt    time.Time   `json:"created_at"`
+	ID           uuid.UUID `json:"id"`
+	SessionID    uuid.UUID `json:"session_id"`
+	RefreshToken string    `json:"refresh_token"`
+	ExpiresAt    time.Time `json:"expires_at"`
+	ReplacedBy   uuid.UUID `json:"replaced_by"`
+	CreatedAt    time.Time `json:"created_at"`
 }
 
 type Session struct {
 	ID           uuid.UUID   `json:"id"`
 	UserID       uuid.UUID   `json:"user_id"`
-	SessionToken pgtype.Text `json:"session_token"`
-	CsrfToken    pgtype.Text `json:"csrf_token"`
+	SessionToken string      `json:"session_token"`
+	CsrfToken    string      `json:"csrf_token"`
 	Platform     string      `json:"platform"`
-	UserAgent    pgtype.Text `json:"user_agent"`
-	DeviceName   pgtype.Text `json:"device_name"`
+	UserAgent    string      `json:"user_agent"`
+	DeviceName   string      `json:"device_name"`
 	IpAddress    *netip.Addr `json:"ip_address"`
 	ExpiresAt    time.Time   `json:"expires_at"`
 	CreatedAt    time.Time   `json:"created_at"`
