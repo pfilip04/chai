@@ -7,8 +7,9 @@ import (
 )
 
 type Config struct {
-	Env        string `json:"env"`
-	Db         string `json:"db"`
+	EnvFile    string `json:"env"`
+	RedisCache string `json:"redis"`
+	Mailing    string `json:"mailing"`
 	HandlerCfg string `json:"handler-config"`
 }
 

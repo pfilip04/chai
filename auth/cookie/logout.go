@@ -8,7 +8,6 @@ import (
 
 	"github.com/pfilip04/chai/database/postgresql/repository"
 	"github.com/pfilip04/chai/errs"
-	"github.com/pfilip04/chai/utils"
 )
 
 func (c *CookieAuth) Logout(w http.ResponseWriter, r *http.Request) {
@@ -16,16 +15,7 @@ func (c *CookieAuth) Logout(w http.ResponseWriter, r *http.Request) {
 	//
 	// Validating the user authorization tokens
 
-	if _, err := c.HardAuthorize(r); err != nil {
-
-		http.Error(w, errs.AuthError.Error(), http.StatusUnauthorized)
-		return
-	}
-
-	//
-	// Clearing the session and CSRF tokens in the database
-
-	sessionCookie, err := r.Cookie("session_token")
+	sessionID, err := c.HardAuthorize(r)
 
 	if err != nil {
 
@@ -33,7 +23,8 @@ func (c *CookieAuth) Logout(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	hashedSessionToken := utils.HashToken(sessionCookie.Value)
+	//
+	// Clearing the session and CSRF tokens in the database
 
 	ctxA, cancelA := context.WithTimeout(r.Context(), c.QueryTimeout)
 	defer cancelA()
@@ -50,14 +41,6 @@ func (c *CookieAuth) Logout(w http.ResponseWriter, r *http.Request) {
 
 	repo := repository.New(tx)
 
-	sessionID, err := repo.DeleteCookieSession(ctxA, hashedSessionToken)
-
-	if err != nil {
-
-		http.Error(w, errs.DatabaseError.Error(), http.StatusInternalServerError)
-		return
-	}
-
 	rows, err := repo.DeleteRefreshToken(ctxA, sessionID)
 
 	if err != nil {
@@ -72,6 +55,14 @@ func (c *CookieAuth) Logout(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	_, err = repo.DeleteCookieSession(ctxA, sessionID)
+
+	if err != nil {
+
+		http.Error(w, errs.DatabaseError.Error(), http.StatusInternalServerError)
+		return
+	}
+
 	if err := tx.Commit(ctxA); err != nil {
 
 		http.Error(w, errs.DatabaseError.Error(), http.StatusInternalServerError)
@@ -81,7 +72,7 @@ func (c *CookieAuth) Logout(w http.ResponseWriter, r *http.Request) {
 	http.SetCookie(w, &http.Cookie{
 		Name:     "session_token",
 		Value:    "",
-		Expires:  time.Now().Add(-time.Hour),
+		Expires:  time.Now().UTC().Add(-time.Hour),
 		HttpOnly: true,
 		Secure:   true,
 		SameSite: http.SameSiteStrictMode,
@@ -91,7 +82,7 @@ func (c *CookieAuth) Logout(w http.ResponseWriter, r *http.Request) {
 	http.SetCookie(w, &http.Cookie{
 		Name:     "csrf_token",
 		Value:    "",
-		Expires:  time.Now().Add(-time.Hour),
+		Expires:  time.Now().UTC().Add(-time.Hour),
 		HttpOnly: false,
 		Secure:   true,
 		SameSite: http.SameSiteStrictMode,
@@ -101,7 +92,7 @@ func (c *CookieAuth) Logout(w http.ResponseWriter, r *http.Request) {
 	http.SetCookie(w, &http.Cookie{
 		Name:     "refresh_token",
 		Value:    "",
-		Expires:  time.Now().Add(-time.Hour),
+		Expires:  time.Now().UTC().Add(-time.Hour),
 		HttpOnly: true,
 		Secure:   true,
 		SameSite: http.SameSiteStrictMode,

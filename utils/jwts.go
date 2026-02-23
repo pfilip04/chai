@@ -15,7 +15,7 @@ type CustomClaims struct {
 
 func CreateJWT(secret []byte, userID uuid.UUID, sessionID uuid.UUID, issuer string, expiration time.Duration) (string, error) {
 
-	now := time.Now()
+	now := time.Now().UTC()
 
 	claims := CustomClaims{
 		SessionID: sessionID.String(),

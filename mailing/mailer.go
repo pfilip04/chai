@@ -8,12 +8,11 @@ import (
 	"github.com/mailgun/mailgun-go/v4"
 
 	"github.com/pfilip04/chai/mailing/components"
-	"github.com/pfilip04/chai/utils"
 )
 
 // Mailgun - 100 emais per day on a free plan
 
-func mail(ctx context.Context, sender Sender, user User, apiKey string) error {
+func Mail(ctx context.Context, sender Sender, user User, apiKey string) error {
 
 	if apiKey == "" {
 		apiKey = "API_KEY"
@@ -30,13 +29,7 @@ func mail(ctx context.Context, sender Sender, user User, apiKey string) error {
 		user.ToUser(), // IT NEEDS TO BE IN THIS FORM == "username <user-email>"
 	)
 
-	code, err := utils.GenerateOTP(10, 6)
-
-	if err != nil {
-		return fmt.Errorf("Code generation failed: %v", err)
-	}
-
-	htmlContent, err := components.RegisterVerify(user.Username, code)
+	htmlContent, err := components.RegisterVerify(user.Username, user.Code)
 
 	if err != nil {
 		return fmt.Errorf("HTML component failed: %v", err)
@@ -48,7 +41,12 @@ func mail(ctx context.Context, sender Sender, user User, apiKey string) error {
 	defer cancelA()
 
 	_, id, err := mg.Send(ctxA, m)
-	fmt.Println(id)
 
-	return err
+	if err != nil {
+		return fmt.Errorf("Email failed to send: %v", err)
+	}
+
+	fmt.Printf("Mail sent successfully, ID: %s\n", id)
+
+	return nil
 }

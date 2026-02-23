@@ -1,7 +1,9 @@
 {
     "env": "dev.env",
 
-    "db": "POSTGRESQL",
+    "redis": "no",
+
+    "mailing": "yes",
 
     "handler-config": "config/handler-config.json"
 }

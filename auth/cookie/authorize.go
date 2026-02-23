@@ -30,13 +30,13 @@ func (c *CookieAuth) SoftAuthorize(r *http.Request) (uuid.UUID, error) {
 
 	repo := repository.New(c.DB)
 
-	IdAndCsrf, err := repo.GetUserIdAndCsrfToken(ctxA, hashedSessionToken)
+	userID, err := repo.GetUserIdBySession(ctxA, hashedSessionToken)
 
 	if err != nil {
 		return uuid.Nil, errs.AuthError
 	}
 
-	return IdAndCsrf.UserID, nil
+	return userID, nil
 }
 
 // Auth for POST/PATCH/PUT/DELETE...
@@ -61,15 +61,15 @@ func (c *CookieAuth) HardAuthorize(r *http.Request) (uuid.UUID, error) {
 
 	repo := repository.New(c.DB)
 
-	IdAndCsrf, err := repo.GetUserIdAndCsrfToken(ctxA, hashedSessionToken)
+	sessionIdAndCsrf, err := repo.GetSessionIdAndCsrf(ctxA, hashedSessionToken)
 
 	if err != nil {
 		return uuid.Nil, errs.AuthError
 	}
 
-	if !utils.CheckToken(csrfToken, IdAndCsrf.CsrfToken) {
+	if !utils.CheckToken(csrfToken, sessionIdAndCsrf.CsrfToken) {
 		return uuid.Nil, errs.AuthError
 	}
 
-	return IdAndCsrf.UserID, nil
+	return sessionIdAndCsrf.ID, nil
 }

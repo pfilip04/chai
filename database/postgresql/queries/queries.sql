@@ -22,8 +22,8 @@ VALUES ($1, $2, $3);
 
 -- name: DeleteCookieSession :one
 DELETE FROM sessions 
-WHERE session_token=$1 
-RETURNING id;
+WHERE id=$1 
+RETURNING user_id;
 
 -- name: DeleteJWTSession :execrows
 DELETE FROM sessions 
@@ -37,8 +37,12 @@ WHERE session_id=$1;
 DELETE FROM users 
 WHERE id=$1;
 
--- name: GetUserIdAndCsrfToken :one
-SELECT user_id, csrf_token FROM sessions 
+-- name: GetUserIdBySession :one
+SELECT user_id FROM sessions 
+WHERE session_token=$1 AND expires_at > NOW();
+
+-- name: GetSessionIdAndCsrf :one
+SELECT id, csrf_token FROM sessions 
 WHERE session_token=$1 AND expires_at > NOW();
 
 -- name: GetSessionIdByRefresh :one

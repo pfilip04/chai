@@ -5,6 +5,7 @@ import "fmt"
 type User struct {
 	Username  string
 	UserEmail string
+	Code      string
 }
 
 type Sender struct {

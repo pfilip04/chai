@@ -26,7 +26,7 @@ func NewRouter(ctx context.Context, configurations string) (chi.Router, *pgxpool
 	//
 	// Load env
 
-	if err := LoadEnv(cfg.Env); err != nil {
+	if err := LoadEnv(cfg.EnvFile); err != nil {
 		return nil, nil, err
 	}
 

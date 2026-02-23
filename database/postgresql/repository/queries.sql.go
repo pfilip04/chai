@@ -54,15 +54,15 @@ func (q *Queries) CreateUser(ctx context.Context, arg CreateUserParams) error {
 
 const deleteCookieSession = `-- name: DeleteCookieSession :one
 DELETE FROM sessions 
-WHERE session_token=$1 
-RETURNING id
+WHERE id=$1 
+RETURNING user_id
 `
 
-func (q *Queries) DeleteCookieSession(ctx context.Context, sessionToken string) (uuid.UUID, error) {
-	row := q.db.QueryRow(ctx, deleteCookieSession, sessionToken)
-	var id uuid.UUID
-	err := row.Scan(&id)
-	return id, err
+func (q *Queries) DeleteCookieSession(ctx context.Context, id uuid.UUID) (uuid.UUID, error) {
+	row := q.db.QueryRow(ctx, deleteCookieSession, id)
+	var user_id uuid.UUID
+	err := row.Scan(&user_id)
+	return user_id, err
 }
 
 const deleteJWTSession = `-- name: DeleteJWTSession :execrows
@@ -126,6 +126,23 @@ func (q *Queries) GetIdAndPass(ctx context.Context, username string) (GetIdAndPa
 	return i, err
 }
 
+const getSessionIdAndCsrf = `-- name: GetSessionIdAndCsrf :one
+SELECT id, csrf_token FROM sessions 
+WHERE session_token=$1 AND expires_at > NOW()
+`
+
+type GetSessionIdAndCsrfRow struct {
+	ID        uuid.UUID `json:"id"`
+	CsrfToken string    `json:"csrf_token"`
+}
+
+func (q *Queries) GetSessionIdAndCsrf(ctx context.Context, sessionToken string) (GetSessionIdAndCsrfRow, error) {
+	row := q.db.QueryRow(ctx, getSessionIdAndCsrf, sessionToken)
+	var i GetSessionIdAndCsrfRow
+	err := row.Scan(&i.ID, &i.CsrfToken)
+	return i, err
+}
+
 const getSessionIdByRefresh = `-- name: GetSessionIdByRefresh :one
 SELECT session_id FROM refresh_tokens 
 WHERE refresh_token=$1 AND expires_at > NOW()
@@ -138,21 +155,16 @@ func (q *Queries) GetSessionIdByRefresh(ctx context.Context, refreshToken string
 	return session_id, err
 }
 
-const getUserIdAndCsrfToken = `-- name: GetUserIdAndCsrfToken :one
-SELECT user_id, csrf_token FROM sessions 
+const getUserIdBySession = `-- name: GetUserIdBySession :one
+SELECT user_id FROM sessions 
 WHERE session_token=$1 AND expires_at > NOW()
 `
 
-type GetUserIdAndCsrfTokenRow struct {
-	UserID    uuid.UUID `json:"user_id"`
-	CsrfToken string    `json:"csrf_token"`
-}
-
-func (q *Queries) GetUserIdAndCsrfToken(ctx context.Context, sessionToken string) (GetUserIdAndCsrfTokenRow, error) {
-	row := q.db.QueryRow(ctx, getUserIdAndCsrfToken, sessionToken)
-	var i GetUserIdAndCsrfTokenRow
-	err := row.Scan(&i.UserID, &i.CsrfToken)
-	return i, err
+func (q *Queries) GetUserIdBySession(ctx context.Context, sessionToken string) (uuid.UUID, error) {
+	row := q.db.QueryRow(ctx, getUserIdBySession, sessionToken)
+	var user_id uuid.UUID
+	err := row.Scan(&user_id)
+	return user_id, err
 }
 
 const getUserIdBySessionId = `-- name: GetUserIdBySessionId :one

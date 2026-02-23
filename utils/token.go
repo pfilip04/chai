@@ -7,6 +7,7 @@ import (
 	"encoding/base64"
 	"encoding/hex"
 	"fmt"
+	"math/big"
 
 	"golang.org/x/crypto/bcrypt"
 )
@@ -50,4 +51,18 @@ func HashToken(token string) string {
 func CheckToken(token string, hash string) bool {
 	hashedToken := HashToken(token)
 	return subtle.ConstantTimeCompare([]byte(hashedToken), []byte(hash)) == 1
+}
+
+func GenerateOTP(numberSystem int64, complexity int) (string, error) {
+	otp := make([]byte, complexity)
+
+	for i := range otp {
+		n, err := rand.Int(rand.Reader, big.NewInt(numberSystem))
+		if err != nil {
+			return "", err
+		}
+		otp[i] = byte('0' + n.Int64())
+	}
+
+	return string(otp), nil
 }
