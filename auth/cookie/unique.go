@@ -9,7 +9,7 @@ import (
 
 func (c *CookieAuth) CheckUniqueUsername(r *http.Request, username string) bool {
 
-	ctxA, cancelA := context.WithTimeout(r.Context(), c.QueryTimeout)
+	ctxA, cancelA := context.WithTimeout(r.Context(), c.queryTimeout)
 	defer cancelA()
 
 	repo := repository.New(c.DB)
@@ -25,7 +25,7 @@ func (c *CookieAuth) CheckUniqueUsername(r *http.Request, username string) bool 
 
 func (c *CookieAuth) CheckUniqueEmail(r *http.Request, email string) bool {
 
-	ctxA, cancelA := context.WithTimeout(r.Context(), c.QueryTimeout)
+	ctxA, cancelA := context.WithTimeout(r.Context(), c.queryTimeout)
 	defer cancelA()
 
 	repo := repository.New(c.DB)

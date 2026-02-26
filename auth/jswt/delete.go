@@ -7,7 +7,7 @@ import (
 	"strings"
 
 	"github.com/pfilip04/chai/database/postgresql/repository"
-	"github.com/pfilip04/chai/errs"
+	"github.com/pfilip04/chai/global/errs"
 	"github.com/pfilip04/chai/utils"
 )
 
@@ -31,7 +31,7 @@ func (j *JWTAuth) Delete(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	ctxA, cancelA := context.WithTimeout(r.Context(), j.QueryTimeout)
+	ctxA, cancelA := context.WithTimeout(r.Context(), j.queryTimeout)
 	defer cancelA()
 
 	tx, err := j.DB.Begin(ctxA)

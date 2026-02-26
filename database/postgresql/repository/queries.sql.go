@@ -10,7 +10,43 @@ import (
 	"time"
 
 	"github.com/google/uuid"
+	"github.com/jackc/pgx/v5/pgtype"
 )
+
+const checkVerificationCode = `-- name: CheckVerificationCode :one
+SELECT id, code from mfa_mail 
+WHERE user_id=$1 AND mfa_type=$2 AND expires_at > NOW()
+`
+
+type CheckVerificationCodeParams struct {
+	UserID  uuid.UUID `json:"user_id"`
+	MfaType string    `json:"mfa_type"`
+}
+
+type CheckVerificationCodeRow struct {
+	ID   uuid.UUID `json:"id"`
+	Code string    `json:"code"`
+}
+
+func (q *Queries) CheckVerificationCode(ctx context.Context, arg CheckVerificationCodeParams) (CheckVerificationCodeRow, error) {
+	row := q.db.QueryRow(ctx, checkVerificationCode, arg.UserID, arg.MfaType)
+	var i CheckVerificationCodeRow
+	err := row.Scan(&i.ID, &i.Code)
+	return i, err
+}
+
+const clearMfaMail = `-- name: ClearMfaMail :execrows
+DELETE FROM mfa_mail 
+WHERE id=$1
+`
+
+func (q *Queries) ClearMfaMail(ctx context.Context, id uuid.UUID) (int64, error) {
+	result, err := q.db.Exec(ctx, clearMfaMail, id)
+	if err != nil {
+		return 0, err
+	}
+	return result.RowsAffected(), nil
+}
 
 const countEmail = `-- name: CountEmail :one
 SELECT COUNT(*) FROM users 
@@ -36,19 +72,52 @@ func (q *Queries) CountUsername(ctx context.Context, username string) (int64, er
 	return count, err
 }
 
+const createMfaMail = `-- name: CreateMfaMail :exec
+INSERT INTO mfa_mail (user_id, mfa_type, code, expires_at) 
+VALUES ($1, $2, $3, $4) 
+ON CONFLICT (user_id, mfa_type) 
+DO UPDATE 
+SET code = EXCLUDED.code, 
+    expires_at = EXCLUDED.expires_at, 
+    created_at = now()
+`
+
+type CreateMfaMailParams struct {
+	UserID    uuid.UUID `json:"user_id"`
+	MfaType   string    `json:"mfa_type"`
+	Code      string    `json:"code"`
+	ExpiresAt time.Time `json:"expires_at"`
+}
+
+func (q *Queries) CreateMfaMail(ctx context.Context, arg CreateMfaMailParams) error {
+	_, err := q.db.Exec(ctx, createMfaMail,
+		arg.UserID,
+		arg.MfaType,
+		arg.Code,
+		arg.ExpiresAt,
+	)
+	return err
+}
+
 const createUser = `-- name: CreateUser :exec
-INSERT INTO users (username, email, password_hash) 
-VALUES ($1, $2, $3)
+INSERT INTO users (username, email, password_hash, mfa) 
+VALUES ($1, $2, $3, $4)
 `
 
 type CreateUserParams struct {
-	Username     string `json:"username"`
-	Email        string `json:"email"`
-	PasswordHash string `json:"password_hash"`
+	Username     string      `json:"username"`
+	Email        string      `json:"email"`
+	PasswordHash string      `json:"password_hash"`
+	Mfa          pgtype.Bool `json:"mfa"`
 }
 
 func (q *Queries) CreateUser(ctx context.Context, arg CreateUserParams) error {
-	_, err := q.db.Exec(ctx, createUser, arg.Username, arg.Email, arg.PasswordHash)
+	_, err := q.db.Exec(ctx, createUser,
+		arg.Username,
+		arg.Email,
+		arg.PasswordHash,
+		arg.Mfa,
+	)
 	return err
 }
 

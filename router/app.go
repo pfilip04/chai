@@ -8,6 +8,7 @@ import (
 	"github.com/pfilip04/chai/auth/cookie"
 	"github.com/pfilip04/chai/auth/jswt"
 	"github.com/pfilip04/chai/config"
+	"github.com/pfilip04/chai/mailing"
 )
 
 type App struct {
@@ -23,16 +24,18 @@ func NewApp(dbpool *pgxpool.Pool) *App {
 	}
 }
 
-func (a *App) InitCookie(cookiecfg config.CookieConfig) {
+func (a *App) InitCookie(cookiecfg config.CookieConfig, sender *mailing.Sender, mailCfg config.MailConfig) {
 	a.Cookie = cookie.New(
 		a.DB,
 		time.Duration(cookiecfg.QueryTimeout),
 		time.Duration(cookiecfg.SessionTokenExpiration),
 		time.Duration(cookiecfg.RefreshTokenExpiration),
+		sender,
+		mailCfg,
 	)
 }
 
-func (a *App) InitJWT(jwtcfg config.JWTConfig, secret string) {
+func (a *App) InitJWT(jwtcfg config.JWTConfig, sender *mailing.Sender, mailCfg config.MailConfig, secret string) {
 	a.JWT = jswt.New(
 		a.DB,
 		time.Duration(jwtcfg.QueryTimeout),
@@ -40,5 +43,7 @@ func (a *App) InitJWT(jwtcfg config.JWTConfig, secret string) {
 		jwtcfg.SpecialName,
 		time.Duration(jwtcfg.JwtTokenExpiration),
 		time.Duration(jwtcfg.RefreshTokenExpiration),
+		sender,
+		mailCfg,
 	)
 }

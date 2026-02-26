@@ -7,7 +7,7 @@ import (
 	"time"
 
 	"github.com/pfilip04/chai/database/postgresql/repository"
-	"github.com/pfilip04/chai/errs"
+	"github.com/pfilip04/chai/global/errs"
 	"github.com/pfilip04/chai/utils"
 )
 
@@ -21,7 +21,7 @@ func (c *CookieAuth) Login(w http.ResponseWriter, r *http.Request) {
 
 	repo := repository.New(c.DB)
 
-	ctxA, cancelA := context.WithTimeout(r.Context(), c.QueryTimeout)
+	ctxA, cancelA := context.WithTimeout(r.Context(), c.queryTimeout)
 	defer cancelA()
 
 	User, err := repo.GetIdAndPass(ctxA, username)
@@ -66,7 +66,7 @@ func (c *CookieAuth) Login(w http.ResponseWriter, r *http.Request) {
 	sessionExpiresAt := time.Now().UTC().Add(c.sessionTokenExpiration)
 	refreshExpiresAt := time.Now().UTC().Add(c.refreshTokenExpiration)
 
-	ctxB, cancelB := context.WithTimeout(r.Context(), c.QueryTimeout)
+	ctxB, cancelB := context.WithTimeout(r.Context(), c.queryTimeout)
 	defer cancelB()
 
 	tx, err := c.DB.Begin(ctxB)

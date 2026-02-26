@@ -8,8 +8,8 @@ import (
 
 type Config struct {
 	EnvFile    string `json:"env"`
-	RedisCache string `json:"redis"`
-	Mailing    string `json:"mailing"`
+	RedisCache bool   `json:"redis"`
+	MailingCfg string `json:"mailing-config"`
 	HandlerCfg string `json:"handler-config"`
 }
 
@@ -17,6 +17,14 @@ type HandlerConfig struct {
 	Router RouterConfig `json:"router"`
 	Cookie CookieConfig `json:"cookie"`
 	JWT    JWTConfig    `json:"jwt"`
+}
+
+type MailConfig struct {
+	MailTimeout      Duration `json:"mail-timeout"`
+	RegExpiry        Duration `json:"register-mail-expiry"`
+	MfaLoginExpiry   Duration `json:"mfalogin-mail-expiry"`
+	ChangePassExpiry Duration `json:"changepass-expiry"`
+	ForgotPassExpiry Duration `json:"forgotpass-expiry"`
 }
 
 type Duration time.Duration

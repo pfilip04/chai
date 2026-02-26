@@ -1,0 +1,4 @@
+DROP TABLE IF EXISTS mfa_mail;
+
+ALTER TABLE users 
+DROP COLUMN mfa;

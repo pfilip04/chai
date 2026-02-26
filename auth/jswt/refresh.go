@@ -7,7 +7,7 @@ import (
 	"time"
 
 	"github.com/pfilip04/chai/database/postgresql/repository"
-	"github.com/pfilip04/chai/errs"
+	"github.com/pfilip04/chai/global/errs"
 	"github.com/pfilip04/chai/utils"
 )
 
@@ -24,7 +24,7 @@ func (j *JWTAuth) Refresh(w http.ResponseWriter, r *http.Request) {
 
 	refreshExpiresAt := time.Now().UTC().Add(j.refreshTokenExpiration)
 
-	ctxA, cancelA := context.WithTimeout(r.Context(), j.QueryTimeout)
+	ctxA, cancelA := context.WithTimeout(r.Context(), j.queryTimeout)
 	defer cancelA()
 
 	repo := repository.New(j.DB)
@@ -37,7 +37,7 @@ func (j *JWTAuth) Refresh(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	ctxB, cancelB := context.WithTimeout(r.Context(), j.QueryTimeout)
+	ctxB, cancelB := context.WithTimeout(r.Context(), j.queryTimeout)
 	defer cancelB()
 
 	userID, err := repo.GetUserIdBySessionId(ctxB, sessionID)
@@ -66,7 +66,7 @@ func (j *JWTAuth) Refresh(w http.ResponseWriter, r *http.Request) {
 
 	hashedNewRefresh := utils.HashToken(newRefreshToken)
 
-	ctxC, cancelC := context.WithTimeout(r.Context(), j.QueryTimeout)
+	ctxC, cancelC := context.WithTimeout(r.Context(), j.queryTimeout)
 	defer cancelC()
 
 	tx, err := j.DB.Begin(ctxC)

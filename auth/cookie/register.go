@@ -6,7 +6,7 @@ import (
 	"net/http"
 
 	"github.com/pfilip04/chai/database/postgresql/repository"
-	"github.com/pfilip04/chai/errs"
+	"github.com/pfilip04/chai/global/errs"
 	"github.com/pfilip04/chai/utils"
 )
 
@@ -62,7 +62,7 @@ func (c *CookieAuth) Register(w http.ResponseWriter, r *http.Request) {
 
 	repo := repository.New(c.DB)
 
-	ctxA, cancelA := context.WithTimeout(r.Context(), c.QueryTimeout)
+	ctxA, cancelA := context.WithTimeout(r.Context(), c.queryTimeout)
 	defer cancelA()
 
 	err = repo.CreateUser(ctxA, repository.CreateUserParams{

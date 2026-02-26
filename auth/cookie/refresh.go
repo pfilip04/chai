@@ -7,7 +7,7 @@ import (
 	"time"
 
 	"github.com/pfilip04/chai/database/postgresql/repository"
-	"github.com/pfilip04/chai/errs"
+	"github.com/pfilip04/chai/global/errs"
 	"github.com/pfilip04/chai/utils"
 )
 
@@ -26,7 +26,7 @@ func (c *CookieAuth) Refresh(w http.ResponseWriter, r *http.Request) {
 	sessionExpiresAt := time.Now().UTC().Add(c.sessionTokenExpiration)
 	refreshExpiresAt := time.Now().UTC().Add(c.refreshTokenExpiration)
 
-	ctxA, cancelA := context.WithTimeout(r.Context(), c.QueryTimeout)
+	ctxA, cancelA := context.WithTimeout(r.Context(), c.queryTimeout)
 	defer cancelA()
 
 	repo := repository.New(c.DB)
@@ -67,7 +67,7 @@ func (c *CookieAuth) Refresh(w http.ResponseWriter, r *http.Request) {
 	hashedCsrfToken := utils.HashToken(csrfToken)
 	hashedNewRefresh := utils.HashToken(newRefreshToken)
 
-	ctxB, cancelB := context.WithTimeout(r.Context(), c.QueryTimeout)
+	ctxB, cancelB := context.WithTimeout(r.Context(), c.queryTimeout)
 	defer cancelB()
 
 	tx, err := c.DB.Begin(ctxB)

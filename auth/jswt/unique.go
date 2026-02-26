@@ -9,7 +9,7 @@ import (
 
 func (j *JWTAuth) CheckUniqueUsername(r *http.Request, username string) bool {
 
-	ctxA, cancelA := context.WithTimeout(r.Context(), j.QueryTimeout)
+	ctxA, cancelA := context.WithTimeout(r.Context(), j.queryTimeout)
 	defer cancelA()
 
 	repo := repository.New(j.DB)
@@ -25,7 +25,7 @@ func (j *JWTAuth) CheckUniqueUsername(r *http.Request, username string) bool {
 
 func (j *JWTAuth) CheckUniqueEmail(r *http.Request, email string) bool {
 
-	ctxA, cancelA := context.WithTimeout(r.Context(), j.QueryTimeout)
+	ctxA, cancelA := context.WithTimeout(r.Context(), j.queryTimeout)
 	defer cancelA()
 
 	repo := repository.New(j.DB)

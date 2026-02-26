@@ -1,0 +1,57 @@
+#
+# *EXAMPLE MAKEFILE FILE*
+#
+
+#
+#THIS IS A MAKEFILE SCHEMA FOR GOLANG-MIGRATE COMMANDS
+
+# YOUR FULL DATABASE URL HERE, THE USUAL ONE IS "postgresql://postgres:postgres@127.0.0.1:5432/app"
+
+DB_URL="postgresql://YOUR_USERNAME_HERE:YOUR_PASSWORD_HERE@YOUR_ADDRES_HERE:YOUR_PORT_HERE/YOUR_DB_NAME_HERE"
+
+
+# IT'S BEST PRACTISE TO CONFIGURE RELATIVE TO PROJECT ROOT FOLDER ="postgresql://postgres:postgres@127.0.0.1:5432/app"
+
+MIGRATIONS_PATH=./database/postgresql/migrations
+
+
+#
+# HERE ARE SOME COMMANDS I MADE, YOU CAN FOLLOW THE FLOW AND TWEAK THEM UP TO YOUR TASTE
+#
+
+
+# Force version 1
+
+migrate-f1:
+	migrate -database "$(DB_URL)" -path "$(MIGRATIONS_PATH)" force 1
+
+
+# Migrate up 1 step
+
+migrate-u1:
+	migrate -database "$(DB_URL)" -path "$(MIGRATIONS_PATH)" up 1
+
+
+# Migrate down 1 step
+
+migrate-d1:
+	migrate -database "$(DB_URL)" -path "$(MIGRATIONS_PATH)" down 1
+
+
+# Migrate up all migrations
+
+migrate-u:
+	migrate -database "$(DB_URL)" -path "$(MIGRATIONS_PATH)" up
+
+
+# Check current version
+
+migrate-v:
+	migrate -database "$(DB_URL)" -path "$(MIGRATIONS_PATH)" version
+
+
+#
+# TO USE THE COMMANDS CONFIGURE THIS FILE FOLLOWING THE COMMENTS AND SAVE IT
+# AFTER THAT YOU CAN RUN THEM LIKE: make *CUSTOM_COMAND*
+# EXAMPLE: make migrate-v
+#

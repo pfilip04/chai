@@ -2,6 +2,7 @@ package router
 
 import (
 	"fmt"
+	"os"
 
 	"github.com/joho/godotenv"
 )
@@ -15,4 +16,17 @@ func LoadEnv(envfile string) error {
 	}
 
 	return nil
+}
+
+func GetEnvSenderInfo() (string, string, string, string) {
+
+	domain := os.Getenv("MAILING_DOMAIN")
+
+	fulldomain := os.Getenv("MAILING_FULLDOMAIN")
+
+	senderName := os.Getenv("SENDER_NAME")
+
+	apikey := os.Getenv("API_KEY")
+
+	return senderName, fulldomain, domain, apikey
 }

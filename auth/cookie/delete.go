@@ -7,7 +7,7 @@ import (
 	"time"
 
 	"github.com/pfilip04/chai/database/postgresql/repository"
-	"github.com/pfilip04/chai/errs"
+	"github.com/pfilip04/chai/global/errs"
 )
 
 func (c *CookieAuth) Delete(w http.ResponseWriter, r *http.Request) {
@@ -26,7 +26,7 @@ func (c *CookieAuth) Delete(w http.ResponseWriter, r *http.Request) {
 	//
 	// Deleting the account from the database based on the sessionID
 
-	ctxA, cancelA := context.WithTimeout(r.Context(), c.QueryTimeout)
+	ctxA, cancelA := context.WithTimeout(r.Context(), c.queryTimeout)
 	defer cancelA()
 
 	tx, err := c.DB.Begin(ctxA)

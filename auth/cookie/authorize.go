@@ -7,7 +7,7 @@ import (
 	"github.com/google/uuid"
 
 	"github.com/pfilip04/chai/database/postgresql/repository"
-	"github.com/pfilip04/chai/errs"
+	"github.com/pfilip04/chai/global/errs"
 	"github.com/pfilip04/chai/utils"
 )
 
@@ -25,7 +25,7 @@ func (c *CookieAuth) SoftAuthorize(r *http.Request) (uuid.UUID, error) {
 
 	hashedSessionToken := utils.HashToken(st.Value)
 
-	ctxA, cancelA := context.WithTimeout(r.Context(), c.QueryTimeout)
+	ctxA, cancelA := context.WithTimeout(r.Context(), c.queryTimeout)
 	defer cancelA()
 
 	repo := repository.New(c.DB)
@@ -56,7 +56,7 @@ func (c *CookieAuth) HardAuthorize(r *http.Request) (uuid.UUID, error) {
 		return uuid.Nil, errs.AuthError
 	}
 
-	ctxA, cancelA := context.WithTimeout(r.Context(), c.QueryTimeout)
+	ctxA, cancelA := context.WithTimeout(r.Context(), c.queryTimeout)
 	defer cancelA()
 
 	repo := repository.New(c.DB)

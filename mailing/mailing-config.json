@@ -1,0 +1,11 @@
+{
+    "mail-timeout": "30m",
+
+    "register-mail-expiry": "15m",
+
+    "mfalogin-mail-expiry": "5m",
+
+    "changepass-expiry": "8m",
+
+    "forgotpass-expiry": "3m"
+}

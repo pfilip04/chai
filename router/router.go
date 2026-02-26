@@ -10,6 +10,7 @@ import (
 	"github.com/jackc/pgx/v5/pgxpool"
 
 	"github.com/pfilip04/chai/config"
+	"github.com/pfilip04/chai/mailing"
 )
 
 func NewRouter(ctx context.Context, configurations string) (chi.Router, *pgxpool.Pool, error) {
@@ -50,13 +51,36 @@ func NewRouter(ctx context.Context, configurations string) (chi.Router, *pgxpool
 		return nil, nil, errors.New("SECRET_KEY IS NOT SET")
 	}
 
+	var senderinfo *mailing.Sender
+	var mcfg config.MailConfig
+
+	name, fdomain, domain, apikey := GetEnvSenderInfo()
+
+	if cfg.MailingCfg != "" {
+		senderinfo = mailing.NewSender(name, fdomain, domain, apikey)
+
+		mcfg, err = config.Load[config.MailConfig](cfg.MailingCfg)
+
+		if err != nil {
+			return nil, nil, err
+		}
+
+	} else {
+		senderinfo = nil
+		mcfg = config.MailConfig{}
+	}
+
 	hcfg, err := config.Load[config.HandlerConfig](cfg.HandlerCfg)
+
+	if err != nil {
+		return nil, nil, err
+	}
 
 	app := NewApp(dbpool)
 
-	app.InitCookie(hcfg.Cookie)
+	app.InitCookie(hcfg.Cookie, senderinfo, mcfg)
 
-	app.InitJWT(hcfg.JWT, secret)
+	app.InitJWT(hcfg.JWT, senderinfo, mcfg, secret)
 
 	//
 	// Router init
