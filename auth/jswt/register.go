@@ -4,9 +4,12 @@ import (
 	"context"
 	"fmt"
 	"net/http"
+	"time"
 
 	"github.com/pfilip04/chai/database/postgresql/repository"
+	"github.com/pfilip04/chai/global/enums"
 	"github.com/pfilip04/chai/global/errs"
+	"github.com/pfilip04/chai/mailing"
 	"github.com/pfilip04/chai/utils"
 )
 
@@ -15,6 +18,7 @@ func (j *JWTAuth) Register(w http.ResponseWriter, r *http.Request) {
 	username := r.FormValue("username")
 	password := r.FormValue("password")
 	email := r.FormValue("email")
+	mfa := r.FormValue("mfa")
 
 	//
 	// Username, password and email criteria check
@@ -60,21 +64,72 @@ func (j *JWTAuth) Register(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	mfaBool, err := utils.ToBool(mfa)
+
+	if err != nil {
+
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+
 	repo := repository.New(j.DB)
 
 	ctxA, cancelA := context.WithTimeout(r.Context(), j.queryTimeout)
 	defer cancelA()
 
-	err = repo.CreateUser(ctxA, repository.CreateUserParams{
+	userId, err := repo.CreateUser(ctxA, repository.CreateUserParams{
 		Username:     username,
 		Email:        email,
 		PasswordHash: hashedPassword,
+		Mfa:          mfaBool,
 	})
 
 	if err != nil {
 
 		http.Error(w, errs.DatabaseError.Error(), http.StatusInternalServerError)
 		return
+	}
+
+	if j.sender != nil {
+
+		code, err := utils.GenerateOTP(10, 6)
+
+		if err != nil {
+
+			http.Error(w, "Server Error", http.StatusInternalServerError)
+			return
+		}
+
+		codeHash := utils.HashToken(code)
+
+		codeExpiresAt := time.Now().UTC().Add(time.Duration(j.mailingExpiration.RegExpiry))
+
+		ctxB, cancelB := context.WithTimeout(r.Context(), j.queryTimeout)
+		defer cancelB()
+
+		mfaId, err := repo.CreateMfaMail(ctxB, repository.CreateMfaMailParams{
+			UserID:    userId,
+			MfaType:   enums.MfaRegVerify,
+			Code:      codeHash,
+			ExpiresAt: codeExpiresAt,
+		})
+
+		if err != nil {
+
+			http.Error(w, errs.DatabaseError.Error(), http.StatusInternalServerError)
+			return
+		}
+
+		mailing.Mail(ctxB, j.mailingExpiration, *j.sender, mailing.Verification{
+			Id:      mfaId,
+			ApiName: enums.MfaRegVerify,
+			Code:    code,
+		}, mailing.User{
+			Username:  username,
+			UserEmail: email,
+		})
+
+		fmt.Fprintln(w, "Registration mail sent successfully!")
 	}
 
 	fmt.Fprintln(w, "User registration successful!")

@@ -24,7 +24,7 @@ func (j *JWTAuth) Login(w http.ResponseWriter, r *http.Request) {
 
 	repo := repository.New(j.DB)
 
-	User, err := repo.GetIdAndPass(ctxA, username)
+	User, err := repo.GetIdPasswordEmailVerifiedMfa(ctxA, username)
 
 	if err != nil || !utils.CheckPasswordHash(password, User.PasswordHash) {
 

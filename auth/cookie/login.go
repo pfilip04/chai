@@ -24,7 +24,7 @@ func (c *CookieAuth) Login(w http.ResponseWriter, r *http.Request) {
 	ctxA, cancelA := context.WithTimeout(r.Context(), c.queryTimeout)
 	defer cancelA()
 
-	User, err := repo.GetIdAndPass(ctxA, username)
+	User, err := repo.GetIdPasswordEmailVerifiedMfa(ctxA, username)
 
 	if err != nil || !utils.CheckPasswordHash(password, User.PasswordHash) {
 

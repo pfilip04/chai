@@ -2,6 +2,8 @@ package mailing
 
 import (
 	"fmt"
+
+	"github.com/google/uuid"
 )
 
 type User struct {
@@ -10,7 +12,7 @@ type User struct {
 }
 
 type Verification struct {
-	Id      string
+	Id      uuid.UUID
 	ApiName string
 	Code    string
 }
@@ -40,6 +42,6 @@ func NewSender(name string, fdomain string, domain string, apikey string) *Sende
 	}
 }
 
-func ToLink(name string, fulldomain string, id string) string {
-	return fmt.Sprintf("%s/%s?%s", fulldomain, name, id)
+func ToLink(name string, fulldomain string, id uuid.UUID) string {
+	return fmt.Sprintf("%s/code/%s?id=%s", fulldomain, name, id.String())
 }

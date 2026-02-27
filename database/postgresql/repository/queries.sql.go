@@ -10,29 +10,23 @@ import (
 	"time"
 
 	"github.com/google/uuid"
-	"github.com/jackc/pgx/v5/pgtype"
 )
 
 const checkVerificationCode = `-- name: CheckVerificationCode :one
-SELECT id, code from mfa_mail 
-WHERE user_id=$1 AND mfa_type=$2 AND expires_at > NOW()
+SELECT code from mfa_mail 
+WHERE id=$1 AND mfa_type=$2 AND expires_at > NOW()
 `
 
 type CheckVerificationCodeParams struct {
-	UserID  uuid.UUID `json:"user_id"`
+	ID      uuid.UUID `json:"id"`
 	MfaType string    `json:"mfa_type"`
 }
 
-type CheckVerificationCodeRow struct {
-	ID   uuid.UUID `json:"id"`
-	Code string    `json:"code"`
-}
-
-func (q *Queries) CheckVerificationCode(ctx context.Context, arg CheckVerificationCodeParams) (CheckVerificationCodeRow, error) {
-	row := q.db.QueryRow(ctx, checkVerificationCode, arg.UserID, arg.MfaType)
-	var i CheckVerificationCodeRow
-	err := row.Scan(&i.ID, &i.Code)
-	return i, err
+func (q *Queries) CheckVerificationCode(ctx context.Context, arg CheckVerificationCodeParams) (string, error) {
+	row := q.db.QueryRow(ctx, checkVerificationCode, arg.ID, arg.MfaType)
+	var code string
+	err := row.Scan(&code)
+	return code, err
 }
 
 const clearMfaMail = `-- name: ClearMfaMail :execrows
@@ -72,7 +66,7 @@ func (q *Queries) CountUsername(ctx context.Context, username string) (int64, er
 	return count, err
 }
 
-const createMfaMail = `-- name: CreateMfaMail :exec
+const createMfaMail = `-- name: CreateMfaMail :one
 INSERT INTO mfa_mail (user_id, mfa_type, code, expires_at) 
 VALUES ($1, $2, $3, $4) 
 ON CONFLICT (user_id, mfa_type) 
@@ -80,6 +74,7 @@ DO UPDATE
 SET code = EXCLUDED.code, 
     expires_at = EXCLUDED.expires_at, 
     created_at = now()
+RETURNING id
 `
 
 type CreateMfaMailParams struct {
@@ -89,36 +84,41 @@ type CreateMfaMailParams struct {
 	ExpiresAt time.Time `json:"expires_at"`
 }
 
-func (q *Queries) CreateMfaMail(ctx context.Context, arg CreateMfaMailParams) error {
-	_, err := q.db.Exec(ctx, createMfaMail,
+func (q *Queries) CreateMfaMail(ctx context.Context, arg CreateMfaMailParams) (uuid.UUID, error) {
+	row := q.db.QueryRow(ctx, createMfaMail,
 		arg.UserID,
 		arg.MfaType,
 		arg.Code,
 		arg.ExpiresAt,
 	)
-	return err
+	var id uuid.UUID
+	err := row.Scan(&id)
+	return id, err
 }
 
-const createUser = `-- name: CreateUser :exec
+const createUser = `-- name: CreateUser :one
 INSERT INTO users (username, email, password_hash, mfa) 
-VALUES ($1, $2, $3, $4)
+VALUES ($1, $2, $3, $4) 
+RETURNING id
 `
 
 type CreateUserParams struct {
-	Username     string      `json:"username"`
-	Email        string      `json:"email"`
-	PasswordHash string      `json:"password_hash"`
-	Mfa          pgtype.Bool `json:"mfa"`
+	Username     string `json:"username"`
+	Email        string `json:"email"`
+	PasswordHash string `json:"password_hash"`
+	Mfa          bool   `json:"mfa"`
 }
 
-func (q *Queries) CreateUser(ctx context.Context, arg CreateUserParams) error {
-	_, err := q.db.Exec(ctx, createUser,
+func (q *Queries) CreateUser(ctx context.Context, arg CreateUserParams) (uuid.UUID, error) {
+	row := q.db.QueryRow(ctx, createUser,
 		arg.Username,
 		arg.Email,
 		arg.PasswordHash,
 		arg.Mfa,
 	)
-	return err
+	var id uuid.UUID
+	err := row.Scan(&id)
+	return id, err
 }
 
 const deleteCookieSession = `-- name: DeleteCookieSession :one
@@ -178,20 +178,27 @@ func (q *Queries) DeleteUser(ctx context.Context, id uuid.UUID) (int64, error) {
 	return result.RowsAffected(), nil
 }
 
-const getIdAndPass = `-- name: GetIdAndPass :one
-SELECT id, password_hash FROM users 
+const getIdPasswordEmailVerifiedMfa = `-- name: GetIdPasswordEmailVerifiedMfa :one
+SELECT id, password_hash, email_verified, mfa FROM users 
 WHERE username=$1
 `
 
-type GetIdAndPassRow struct {
-	ID           uuid.UUID `json:"id"`
-	PasswordHash string    `json:"password_hash"`
+type GetIdPasswordEmailVerifiedMfaRow struct {
+	ID            uuid.UUID `json:"id"`
+	PasswordHash  string    `json:"password_hash"`
+	EmailVerified bool      `json:"email_verified"`
+	Mfa           bool      `json:"mfa"`
 }
 
-func (q *Queries) GetIdAndPass(ctx context.Context, username string) (GetIdAndPassRow, error) {
-	row := q.db.QueryRow(ctx, getIdAndPass, username)
-	var i GetIdAndPassRow
-	err := row.Scan(&i.ID, &i.PasswordHash)
+func (q *Queries) GetIdPasswordEmailVerifiedMfa(ctx context.Context, username string) (GetIdPasswordEmailVerifiedMfaRow, error) {
+	row := q.db.QueryRow(ctx, getIdPasswordEmailVerifiedMfa, username)
+	var i GetIdPasswordEmailVerifiedMfaRow
+	err := row.Scan(
+		&i.ID,
+		&i.PasswordHash,
+		&i.EmailVerified,
+		&i.Mfa,
+	)
 	return i, err
 }
 

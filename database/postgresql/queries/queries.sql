@@ -1,9 +1,10 @@
--- name: CreateUser :exec
+-- name: CreateUser :one
 INSERT INTO users (username, email, password_hash, mfa) 
-VALUES ($1, $2, $3, $4);
+VALUES ($1, $2, $3, $4) 
+RETURNING id;
 
--- name: GetIdAndPass :one
-SELECT id, password_hash FROM users 
+-- name: GetIdPasswordEmailVerifiedMfa :one
+SELECT id, password_hash, email_verified, mfa FROM users 
 WHERE username=$1;
 
 -- name: InsertCookieSession :one
@@ -76,18 +77,19 @@ WHERE username=$1;
 SELECT COUNT(*) FROM users 
 WHERE email=$1;
 
--- name: CreateMfaMail :exec
+-- name: CreateMfaMail :one
 INSERT INTO mfa_mail (user_id, mfa_type, code, expires_at) 
 VALUES ($1, $2, $3, $4) 
 ON CONFLICT (user_id, mfa_type) 
 DO UPDATE 
 SET code = EXCLUDED.code, 
     expires_at = EXCLUDED.expires_at, 
-    created_at = now();
+    created_at = now()
+RETURNING id;
 
 -- name: CheckVerificationCode :one
-SELECT id, code from mfa_mail 
-WHERE user_id=$1 AND mfa_type=$2 AND expires_at > NOW();
+SELECT code from mfa_mail 
+WHERE id=$1 AND mfa_type=$2 AND expires_at > NOW();
 
 -- name: ClearMfaMail :execrows
 DELETE FROM mfa_mail 

@@ -1,7 +1,9 @@
 package utils
 
 import (
+	"errors"
 	"net/mail"
+	"strings"
 )
 
 //
@@ -76,4 +78,18 @@ func IsValidEmail(email string) bool {
 	}
 
 	return true
+}
+
+func ToBool(p string) (bool, error) {
+
+	boolean := strings.ToLower(p)
+
+	switch boolean {
+	case "true":
+		return true, nil
+	case "false":
+		return false, nil
+	}
+
+	return false, errors.New("Can't parse to bool")
 }

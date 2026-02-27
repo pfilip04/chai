@@ -9,7 +9,6 @@ import (
 	"time"
 
 	"github.com/google/uuid"
-	"github.com/jackc/pgx/v5/pgtype"
 )
 
 type MfaMail struct {
@@ -44,12 +43,12 @@ type Session struct {
 }
 
 type User struct {
-	ID            uuid.UUID   `json:"id"`
-	Username      string      `json:"username"`
-	Email         string      `json:"email"`
-	PasswordHash  string      `json:"password_hash"`
-	EmailVerified bool        `json:"email_verified"`
-	CreatedAt     time.Time   `json:"created_at"`
-	UpdatedAt     time.Time   `json:"updated_at"`
-	Mfa           pgtype.Bool `json:"mfa"`
+	ID            uuid.UUID `json:"id"`
+	Username      string    `json:"username"`
+	Email         string    `json:"email"`
+	PasswordHash  string    `json:"password_hash"`
+	EmailVerified bool      `json:"email_verified"`
+	CreatedAt     time.Time `json:"created_at"`
+	UpdatedAt     time.Time `json:"updated_at"`
+	Mfa           bool      `json:"mfa"`
 }
