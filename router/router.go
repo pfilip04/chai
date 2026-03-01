@@ -82,6 +82,8 @@ func NewRouter(ctx context.Context, configurations string) (chi.Router, *pgxpool
 
 	app.InitJWT(hcfg.JWT, senderinfo, mcfg, secret)
 
+	app.InitCode(hcfg.Code)
+
 	//
 	// Router init
 

@@ -17,6 +17,7 @@ type HandlerConfig struct {
 	Router RouterConfig `json:"router"`
 	Cookie CookieConfig `json:"cookie"`
 	JWT    JWTConfig    `json:"jwt"`
+	Code   Duration     `json:"verification-code-queryTimeout"`
 }
 
 type MailConfig struct {

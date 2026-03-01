@@ -46,5 +46,7 @@ func (app *App) NewChiRouter(routercfg config.RouterConfig) chi.Router {
 		r.Post("/refresh", app.JWT.Refresh)
 	})
 
+	router.Post("/code/{mfa_type}", app.Code.VerifyCode)
+
 	return router
 }

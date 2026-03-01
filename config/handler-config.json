@@ -24,5 +24,7 @@
         "refresh-token-expiration": "720h",
         
         "specialName": "chai_auth_token"
-    }
+    },
+
+    "verification-code-queryTimeout": "5s"
 }

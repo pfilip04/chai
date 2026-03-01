@@ -5,6 +5,7 @@ import (
 
 	"github.com/jackc/pgx/v5/pgxpool"
 
+	"github.com/pfilip04/chai/auth/code"
 	"github.com/pfilip04/chai/auth/cookie"
 	"github.com/pfilip04/chai/auth/jswt"
 	"github.com/pfilip04/chai/config"
@@ -15,6 +16,7 @@ type App struct {
 	DB     *pgxpool.Pool
 	Cookie *cookie.CookieAuth
 	JWT    *jswt.JWTAuth
+	Code   *code.VerificationCode
 }
 
 func NewApp(dbpool *pgxpool.Pool) *App {
@@ -45,5 +47,12 @@ func (a *App) InitJWT(jwtcfg config.JWTConfig, sender *mailing.Sender, mailCfg c
 		time.Duration(jwtcfg.RefreshTokenExpiration),
 		sender,
 		mailCfg,
+	)
+}
+
+func (a *App) InitCode(queryTimeout config.Duration) {
+	a.Code = code.New(
+		a.DB,
+		time.Duration(queryTimeout),
 	)
 }
