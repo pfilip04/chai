@@ -88,9 +88,13 @@ SET code = EXCLUDED.code,
 RETURNING id;
 
 -- name: CheckVerificationCode :one
-SELECT code from mfa_mail 
+SELECT code FROM mfa_mail 
 WHERE id=$1 AND mfa_type=$2 AND expires_at > NOW();
 
 -- name: ClearMfaMail :execrows
 DELETE FROM mfa_mail 
 WHERE id=$1;
+
+-- name: FindUserByUsernameOrEmail :one
+SELECT id, username, email FROM users 
+WHERE username=$1 OR email=$2;

@@ -13,7 +13,7 @@ import (
 )
 
 const checkVerificationCode = `-- name: CheckVerificationCode :one
-SELECT code from mfa_mail 
+SELECT code FROM mfa_mail 
 WHERE id=$1 AND mfa_type=$2 AND expires_at > NOW()
 `
 
@@ -176,6 +176,29 @@ func (q *Queries) DeleteUser(ctx context.Context, id uuid.UUID) (int64, error) {
 		return 0, err
 	}
 	return result.RowsAffected(), nil
+}
+
+const findUserByUsernameOrEmail = `-- name: FindUserByUsernameOrEmail :one
+SELECT id, username, email FROM users 
+WHERE username=$1 OR email=$2
+`
+
+type FindUserByUsernameOrEmailParams struct {
+	Username string `json:"username"`
+	Email    string `json:"email"`
+}
+
+type FindUserByUsernameOrEmailRow struct {
+	ID       uuid.UUID `json:"id"`
+	Username string    `json:"username"`
+	Email    string    `json:"email"`
+}
+
+func (q *Queries) FindUserByUsernameOrEmail(ctx context.Context, arg FindUserByUsernameOrEmailParams) (FindUserByUsernameOrEmailRow, error) {
+	row := q.db.QueryRow(ctx, findUserByUsernameOrEmail, arg.Username, arg.Email)
+	var i FindUserByUsernameOrEmailRow
+	err := row.Scan(&i.ID, &i.Username, &i.Email)
+	return i, err
 }
 
 const getIdPasswordEmailVerifiedMfa = `-- name: GetIdPasswordEmailVerifiedMfa :one
