@@ -3,11 +3,14 @@ package jswt
 import (
 	"context"
 	"encoding/json"
+	"fmt"
 	"net/http"
 	"time"
 
 	"github.com/pfilip04/chai/database/postgresql/repository"
+	"github.com/pfilip04/chai/global/enums"
 	"github.com/pfilip04/chai/global/errs"
+	"github.com/pfilip04/chai/mailing"
 	"github.com/pfilip04/chai/utils"
 )
 
@@ -24,12 +27,87 @@ func (j *JWTAuth) Login(w http.ResponseWriter, r *http.Request) {
 
 	repo := repository.New(j.DB)
 
-	User, err := repo.GetIdPasswordEmailVerifiedMfa(ctxA, username)
+	user, err := repo.GetIdPasswordEmailVerifiedMfa(ctxA, username)
 
-	if err != nil || !utils.CheckPasswordHash(password, User.PasswordHash) {
+	if err != nil || !utils.CheckPasswordHash(password, user.PasswordHash) {
 
 		http.Error(w, "Invalid username or password", http.StatusUnauthorized)
 		return
+	}
+
+	if j.sender != nil {
+
+		if !user.EmailVerified {
+
+			http.Error(w, errs.AuthError.Error(), http.StatusUnauthorized)
+			return
+		}
+
+		if user.Mfa {
+
+			code, err := utils.GenerateOTP(10, 6)
+
+			if err != nil {
+
+				http.Error(w, "Server Error", http.StatusInternalServerError)
+				return
+			}
+
+			codeHash := utils.HashToken(code)
+
+			codeExpiresAt := time.Now().UTC().Add(time.Duration(j.mailingExpiration.MfaLoginExpiry))
+
+			ctxB, cancelB := context.WithTimeout(r.Context(), j.queryTimeout)
+			defer cancelB()
+
+			user, err := repo.FindUserByUsernameOrEmail(ctxB, repository.FindUserByUsernameOrEmailParams{
+				Username: username,
+				Email:    "",
+			})
+
+			if err != nil {
+
+				http.Error(w, errs.DatabaseError.Error(), http.StatusInternalServerError)
+				return
+			}
+
+			ctxC, cancelC := context.WithTimeout(r.Context(), j.queryTimeout)
+			defer cancelC()
+
+			mfaId, err := repo.CreateMfaMail(ctxC, repository.CreateMfaMailParams{
+				UserID:    user.ID,
+				MfaType:   enums.MfaLoginVerify,
+				Code:      codeHash,
+				ExpiresAt: codeExpiresAt,
+			})
+
+			if err != nil {
+
+				http.Error(w, errs.DatabaseError.Error(), http.StatusInternalServerError)
+				return
+			}
+
+			ctxD, cancelD := context.WithTimeout(r.Context(), j.queryTimeout)
+			defer cancelD()
+
+			err = mailing.Mail(ctxD, j.mailingExpiration, *j.sender, mailing.Verification{
+				Id:      mfaId,
+				ApiName: enums.MfaLoginVerify,
+				Code:    code,
+			}, mailing.User{
+				Username:  username,
+				UserEmail: user.Email,
+			})
+
+			if err != nil {
+
+				http.Error(w, "Server Error", http.StatusInternalServerError)
+				return
+			}
+
+			fmt.Println(w, "Login mail succesfully sent")
+			return
+		}
 	}
 
 	refreshToken, err := utils.GenerateToken(64)
@@ -44,10 +122,10 @@ func (j *JWTAuth) Login(w http.ResponseWriter, r *http.Request) {
 
 	refreshExpiresAt := time.Now().UTC().Add(j.refreshTokenExpiration)
 
-	ctxB, cancelB := context.WithTimeout(r.Context(), j.queryTimeout)
-	defer cancelB()
+	ctxE, cancelE := context.WithTimeout(r.Context(), j.queryTimeout)
+	defer cancelE()
 
-	tx, err := j.DB.Begin(ctxB)
+	tx, err := j.DB.Begin(ctxE)
 
 	if err != nil {
 
@@ -55,12 +133,12 @@ func (j *JWTAuth) Login(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	defer tx.Rollback(ctxB)
+	defer tx.Rollback(ctxE)
 
 	repo = repository.New(tx)
 
-	sessionID, err := repo.InsertJWTSession(ctxB, repository.InsertJWTSessionParams{
-		UserID:    User.ID,
+	sessionID, err := repo.InsertJWTSession(ctxE, repository.InsertJWTSessionParams{
+		UserID:    user.ID,
 		Platform:  "mobile",
 		ExpiresAt: refreshExpiresAt,
 	})
@@ -71,7 +149,7 @@ func (j *JWTAuth) Login(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	tokenString, err := utils.CreateJWT(j.secret, User.ID, sessionID, j.issuer, j.jwtTokenExpiration)
+	tokenString, err := utils.CreateJWT(j.secret, user.ID, sessionID, j.issuer, j.jwtTokenExpiration)
 
 	if err != nil {
 
@@ -79,7 +157,7 @@ func (j *JWTAuth) Login(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	err = repo.InsertRefreshToken(ctxB, repository.InsertRefreshTokenParams{
+	err = repo.InsertRefreshToken(ctxE, repository.InsertRefreshTokenParams{
 		SessionID:    sessionID,
 		RefreshToken: hashedRefresh,
 		ExpiresAt:    refreshExpiresAt,
@@ -91,7 +169,7 @@ func (j *JWTAuth) Login(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if err := tx.Commit(ctxB); err != nil {
+	if err := tx.Commit(ctxE); err != nil {
 
 		http.Error(w, errs.DatabaseError.Error(), http.StatusInternalServerError)
 		return

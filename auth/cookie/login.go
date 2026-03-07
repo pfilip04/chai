@@ -7,7 +7,9 @@ import (
 	"time"
 
 	"github.com/pfilip04/chai/database/postgresql/repository"
+	"github.com/pfilip04/chai/global/enums"
 	"github.com/pfilip04/chai/global/errs"
+	"github.com/pfilip04/chai/mailing"
 	"github.com/pfilip04/chai/utils"
 )
 
@@ -19,17 +21,92 @@ func (c *CookieAuth) Login(w http.ResponseWriter, r *http.Request) {
 	username := r.FormValue("username")
 	password := r.FormValue("password")
 
-	repo := repository.New(c.DB)
-
 	ctxA, cancelA := context.WithTimeout(r.Context(), c.queryTimeout)
 	defer cancelA()
 
-	User, err := repo.GetIdPasswordEmailVerifiedMfa(ctxA, username)
+	repo := repository.New(c.DB)
 
-	if err != nil || !utils.CheckPasswordHash(password, User.PasswordHash) {
+	user, err := repo.GetIdPasswordEmailVerifiedMfa(ctxA, username)
+
+	if err != nil || !utils.CheckPasswordHash(password, user.PasswordHash) {
 
 		http.Error(w, "Invalid username or password", http.StatusUnauthorized)
 		return
+	}
+
+	if c.sender != nil {
+
+		if !user.EmailVerified {
+
+			http.Error(w, errs.AuthError.Error(), http.StatusUnauthorized)
+			return
+		}
+
+		if user.Mfa {
+
+			code, err := utils.GenerateOTP(10, 6)
+
+			if err != nil {
+
+				http.Error(w, "Server Error", http.StatusInternalServerError)
+				return
+			}
+
+			codeHash := utils.HashToken(code)
+
+			codeExpiresAt := time.Now().UTC().Add(time.Duration(c.mailingExpiration.MfaLoginExpiry))
+
+			ctxB, cancelB := context.WithTimeout(r.Context(), c.queryTimeout)
+			defer cancelB()
+
+			user, err := repo.FindUserByUsernameOrEmail(ctxB, repository.FindUserByUsernameOrEmailParams{
+				Username: username,
+				Email:    "",
+			})
+
+			if err != nil {
+
+				http.Error(w, errs.DatabaseError.Error(), http.StatusInternalServerError)
+				return
+			}
+
+			ctxC, cancelC := context.WithTimeout(r.Context(), c.queryTimeout)
+			defer cancelC()
+
+			mfaId, err := repo.CreateMfaMail(ctxC, repository.CreateMfaMailParams{
+				UserID:    user.ID,
+				MfaType:   enums.MfaLoginVerify,
+				Code:      codeHash,
+				ExpiresAt: codeExpiresAt,
+			})
+
+			if err != nil {
+
+				http.Error(w, errs.DatabaseError.Error(), http.StatusInternalServerError)
+				return
+			}
+
+			ctxD, cancelD := context.WithTimeout(r.Context(), c.queryTimeout)
+			defer cancelD()
+
+			err = mailing.Mail(ctxD, c.mailingExpiration, *c.sender, mailing.Verification{
+				Id:      mfaId,
+				ApiName: enums.MfaLoginVerify,
+				Code:    code,
+			}, mailing.User{
+				Username:  username,
+				UserEmail: user.Email,
+			})
+
+			if err != nil {
+
+				http.Error(w, "Server Error", http.StatusInternalServerError)
+				return
+			}
+
+			fmt.Println(w, "Login mail succesfully sent")
+			return
+		}
 	}
 
 	//
@@ -66,10 +143,10 @@ func (c *CookieAuth) Login(w http.ResponseWriter, r *http.Request) {
 	sessionExpiresAt := time.Now().UTC().Add(c.sessionTokenExpiration)
 	refreshExpiresAt := time.Now().UTC().Add(c.refreshTokenExpiration)
 
-	ctxB, cancelB := context.WithTimeout(r.Context(), c.queryTimeout)
-	defer cancelB()
+	ctxE, cancelE := context.WithTimeout(r.Context(), c.queryTimeout)
+	defer cancelE()
 
-	tx, err := c.DB.Begin(ctxB)
+	tx, err := c.DB.Begin(ctxE)
 
 	if err != nil {
 
@@ -77,12 +154,12 @@ func (c *CookieAuth) Login(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	defer tx.Rollback(ctxB)
+	defer tx.Rollback(ctxE)
 
 	repo = repository.New(tx)
 
-	sessionID, err := repo.InsertCookieSession(ctxB, repository.InsertCookieSessionParams{
-		UserID:       User.ID,
+	sessionID, err := repo.InsertCookieSession(ctxE, repository.InsertCookieSessionParams{
+		UserID:       user.ID,
 		SessionToken: hashedSessionToken,
 		CsrfToken:    hashedCsrfToken,
 		Platform:     "web",
@@ -95,7 +172,7 @@ func (c *CookieAuth) Login(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	err = repo.InsertRefreshToken(ctxB, repository.InsertRefreshTokenParams{
+	err = repo.InsertRefreshToken(ctxE, repository.InsertRefreshTokenParams{
 		SessionID:    sessionID,
 		RefreshToken: hashedRefresh,
 		ExpiresAt:    refreshExpiresAt,
@@ -107,7 +184,7 @@ func (c *CookieAuth) Login(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if err := tx.Commit(ctxB); err != nil {
+	if err := tx.Commit(ctxE); err != nil {
 		http.Error(w, errs.DatabaseError.Error(), http.StatusInternalServerError)
 		return
 	}

@@ -22,10 +22,9 @@ But watch out for:
 
 ## Future improvements
 
-- Email verification
+- Email verification (in progress...)
 - Adding Redis
 - Rate limiting and IP checking, CORS
-- Other ideas may come to mind...
 
 ## Run it
 

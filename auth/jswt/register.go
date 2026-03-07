@@ -120,7 +120,10 @@ func (j *JWTAuth) Register(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 
-		mailing.Mail(ctxB, j.mailingExpiration, *j.sender, mailing.Verification{
+		ctxC, cancelC := context.WithTimeout(r.Context(), j.queryTimeout)
+		defer cancelC()
+
+		err = mailing.Mail(ctxC, j.mailingExpiration, *j.sender, mailing.Verification{
 			Id:      mfaId,
 			ApiName: enums.MfaRegVerify,
 			Code:    code,
@@ -128,6 +131,12 @@ func (j *JWTAuth) Register(w http.ResponseWriter, r *http.Request) {
 			Username:  username,
 			UserEmail: email,
 		})
+
+		if err != nil {
+
+			http.Error(w, "Server Error", http.StatusInternalServerError)
+			return
+		}
 
 		fmt.Fprintln(w, "Registration mail sent successfully!")
 	}

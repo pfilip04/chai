@@ -120,7 +120,10 @@ func (c *CookieAuth) Register(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 
-		mailing.Mail(ctxB, c.mailingExpiration, *c.sender, mailing.Verification{
+		ctxC, cancelC := context.WithTimeout(r.Context(), c.queryTimeout)
+		defer cancelC()
+
+		err = mailing.Mail(ctxC, c.mailingExpiration, *c.sender, mailing.Verification{
 			Id:      mfaId,
 			ApiName: enums.MfaRegVerify,
 			Code:    code,
@@ -128,6 +131,12 @@ func (c *CookieAuth) Register(w http.ResponseWriter, r *http.Request) {
 			Username:  username,
 			UserEmail: email,
 		})
+
+		if err != nil {
+
+			http.Error(w, "Server Error", http.StatusInternalServerError)
+			return
+		}
 
 		fmt.Fprintln(w, "Registration mail sent successfully!")
 	}
