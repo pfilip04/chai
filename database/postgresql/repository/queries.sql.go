@@ -180,13 +180,8 @@ func (q *Queries) DeleteUser(ctx context.Context, id uuid.UUID) (int64, error) {
 
 const findUserByUsernameOrEmail = `-- name: FindUserByUsernameOrEmail :one
 SELECT id, username, email FROM users 
-WHERE username=$1 OR email=$2
+WHERE username=$1 OR email=$1
 `
-
-type FindUserByUsernameOrEmailParams struct {
-	Username string `json:"username"`
-	Email    string `json:"email"`
-}
 
 type FindUserByUsernameOrEmailRow struct {
 	ID       uuid.UUID `json:"id"`
@@ -194,8 +189,8 @@ type FindUserByUsernameOrEmailRow struct {
 	Email    string    `json:"email"`
 }
 
-func (q *Queries) FindUserByUsernameOrEmail(ctx context.Context, arg FindUserByUsernameOrEmailParams) (FindUserByUsernameOrEmailRow, error) {
-	row := q.db.QueryRow(ctx, findUserByUsernameOrEmail, arg.Username, arg.Email)
+func (q *Queries) FindUserByUsernameOrEmail(ctx context.Context, username string) (FindUserByUsernameOrEmailRow, error) {
+	row := q.db.QueryRow(ctx, findUserByUsernameOrEmail, username)
 	var i FindUserByUsernameOrEmailRow
 	err := row.Scan(&i.ID, &i.Username, &i.Email)
 	return i, err

@@ -97,4 +97,4 @@ WHERE id=$1;
 
 -- name: FindUserByUsernameOrEmail :one
 SELECT id, username, email FROM users 
-WHERE username=$1 OR email=$2;
+WHERE username=$1 OR email=$1;

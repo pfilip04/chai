@@ -22,10 +22,7 @@ func (j *JWTAuth) ForgotPassword(w http.ResponseWriter, r *http.Request) {
 
 	repo := repository.New(j.DB)
 
-	user, err := repo.FindUserByUsernameOrEmail(ctxA, repository.FindUserByUsernameOrEmailParams{
-		Username: usernameOrEmail,
-		Email:    usernameOrEmail,
-	})
+	user, err := repo.FindUserByUsernameOrEmail(ctxA, usernameOrEmail)
 
 	if err != nil {
 

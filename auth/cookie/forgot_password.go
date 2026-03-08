@@ -22,10 +22,7 @@ func (c *CookieAuth) ForgotPassword(w http.ResponseWriter, r *http.Request) {
 
 	repo := repository.New(c.DB)
 
-	user, err := repo.FindUserByUsernameOrEmail(ctxA, repository.FindUserByUsernameOrEmailParams{
-		Username: usernameOrEmail,
-		Email:    usernameOrEmail,
-	})
+	user, err := repo.FindUserByUsernameOrEmail(ctxA, usernameOrEmail)
 
 	if err != nil {
 

@@ -60,10 +60,7 @@ func (j *JWTAuth) Login(w http.ResponseWriter, r *http.Request) {
 			ctxB, cancelB := context.WithTimeout(r.Context(), j.queryTimeout)
 			defer cancelB()
 
-			user, err := repo.FindUserByUsernameOrEmail(ctxB, repository.FindUserByUsernameOrEmailParams{
-				Username: username,
-				Email:    "",
-			})
+			user, err := repo.FindUserByUsernameOrEmail(ctxB, username)
 
 			if err != nil {
 

@@ -59,10 +59,7 @@ func (c *CookieAuth) Login(w http.ResponseWriter, r *http.Request) {
 			ctxB, cancelB := context.WithTimeout(r.Context(), c.queryTimeout)
 			defer cancelB()
 
-			user, err := repo.FindUserByUsernameOrEmail(ctxB, repository.FindUserByUsernameOrEmailParams{
-				Username: username,
-				Email:    "",
-			})
+			user, err := repo.FindUserByUsernameOrEmail(ctxB, username)
 
 			if err != nil {
 
