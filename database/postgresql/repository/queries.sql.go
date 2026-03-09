@@ -273,6 +273,30 @@ func (q *Queries) GetUserIdBySessionId(ctx context.Context, id uuid.UUID) (uuid.
 	return user_id, err
 }
 
+const getUsernameEmailPasswordMfaById = `-- name: GetUsernameEmailPasswordMfaById :one
+SELECT username, email, password_hash, mfa FROM users 
+WHERE id=$1
+`
+
+type GetUsernameEmailPasswordMfaByIdRow struct {
+	Username     string `json:"username"`
+	Email        string `json:"email"`
+	PasswordHash string `json:"password_hash"`
+	Mfa          bool   `json:"mfa"`
+}
+
+func (q *Queries) GetUsernameEmailPasswordMfaById(ctx context.Context, id uuid.UUID) (GetUsernameEmailPasswordMfaByIdRow, error) {
+	row := q.db.QueryRow(ctx, getUsernameEmailPasswordMfaById, id)
+	var i GetUsernameEmailPasswordMfaByIdRow
+	err := row.Scan(
+		&i.Username,
+		&i.Email,
+		&i.PasswordHash,
+		&i.Mfa,
+	)
+	return i, err
+}
+
 const insertCookieSession = `-- name: InsertCookieSession :one
 INSERT INTO sessions (user_id, session_token, csrf_token, platform, expires_at) 
 VALUES ($1, $2, $3, $4, $5) 
