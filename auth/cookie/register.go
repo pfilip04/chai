@@ -41,13 +41,13 @@ func (c *CookieAuth) Register(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if !c.CheckUniqueUsername(r, username) {
+	if !utils.CheckUniqueUsername(r, username, c.DB, c.queryTimeout) {
 
 		http.Error(w, "Username taken", http.StatusConflict)
 		return
 	}
 
-	if !c.CheckUniqueEmail(r, email) {
+	if !utils.CheckUniqueEmail(r, email, c.DB, c.queryTimeout) {
 
 		http.Error(w, "E-mail taken", http.StatusConflict)
 		return

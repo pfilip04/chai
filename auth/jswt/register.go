@@ -41,13 +41,13 @@ func (j *JWTAuth) Register(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if !j.CheckUniqueUsername(r, username) {
+	if !utils.CheckUniqueUsername(r, username, j.DB, j.queryTimeout) {
 
 		http.Error(w, "Username taken", http.StatusConflict)
 		return
 	}
 
-	if !j.CheckUniqueEmail(r, email) {
+	if !utils.CheckUniqueEmail(r, email, j.DB, j.queryTimeout) {
 
 		http.Error(w, "E-mail taken", http.StatusConflict)
 		return

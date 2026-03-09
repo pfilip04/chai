@@ -4,26 +4,14 @@ import (
 	"context"
 	"fmt"
 	"net/http"
-	"strings"
 
 	"github.com/pfilip04/chai/database/postgresql/repository"
 	"github.com/pfilip04/chai/global/errs"
-	"github.com/pfilip04/chai/utils"
 )
 
 func (j *JWTAuth) Delete(w http.ResponseWriter, r *http.Request) {
 
-	authHeader := r.Header.Get("Authorization")
-
-	if authHeader == "" {
-
-		http.Error(w, errs.AuthError.Error(), http.StatusUnauthorized)
-		return
-	}
-
-	token := strings.TrimPrefix(authHeader, "Bearer ")
-
-	userID, sessionID, err := utils.CheckJWT(token, j.secret, j.issuer)
+	userID, sessionID, err := j.Authorize(r)
 
 	if err != nil {
 

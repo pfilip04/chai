@@ -32,18 +32,30 @@ func (app *App) NewChiRouter(routercfg config.RouterConfig) chi.Router {
 
 	router.Route("/web", func(r chi.Router) {
 		r.Post("/register", app.Cookie.Register)
+
 		r.Post("/login", app.Cookie.Login)
 		r.Post("/logout", app.Cookie.Logout)
+
 		r.Delete("/delete", app.Cookie.Delete)
+
 		r.Post("/refresh", app.Cookie.Refresh)
+
+		r.Post("/change-password", app.Cookie.ChangePassword)
+		r.Post("/forgot-password", app.Cookie.ForgotPassword)
 	})
 
 	router.Route("/mobile", func(r chi.Router) {
 		r.Post("/register", app.JWT.Register)
+
 		r.Post("/login", app.JWT.Login)
 		r.Post("/logout", app.JWT.Logout)
+
 		r.Delete("/delete", app.JWT.Delete)
+
 		r.Post("/refresh", app.JWT.Refresh)
+
+		r.Post("/change-password", app.JWT.ChangePassword)
+		r.Post("/forgot-password", app.JWT.ForgotPassword)
 	})
 
 	router.Post("/code/{mfa_type}", app.Code.VerifyCode)
