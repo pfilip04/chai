@@ -8,10 +8,10 @@ import (
 	"time"
 
 	"github.com/google/uuid"
-	"github.com/pfilip04/chai/config"
 	"github.com/pfilip04/chai/database/postgresql/repository"
 	"github.com/pfilip04/chai/global/enums"
 	"github.com/pfilip04/chai/global/errs"
+	"github.com/pfilip04/chai/mailing"
 	"github.com/pfilip04/chai/utils"
 )
 
@@ -49,18 +49,18 @@ func (j *JWTAuth) Login(w http.ResponseWriter, r *http.Request) {
 
 		if user.Mfa {
 
-			message, err := utils.SendMail(config.DbQuerying{
+			message, err := mailing.SendMail(mailing.DbQuerying{
 				Repo:         repo,
 				QueryTimeout: j.queryTimeout,
 				Ctx:          r.Context(),
-			}, config.Mailc{
+			}, mailing.Mailc{
 				MExp:    j.mailingExpiration.MfaLoginExpiry,
 				MailCfg: j.mailingExpiration,
-			}, config.User{
-				UserID:   user.ID,
-				Username: username,
-				Email:    user.Email,
-			}, config.MfaType{
+			}, mailing.User{
+				UserID:    user.ID,
+				Username:  username,
+				UserEmail: user.Email,
+			}, mailing.MfaType{
 				ApiName:  enums.MfaLoginVerify,
 				MailName: enums.Login,
 			}, j.sender)

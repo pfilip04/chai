@@ -6,10 +6,10 @@ import (
 	"net/http"
 	"strings"
 
-	"github.com/pfilip04/chai/config"
 	"github.com/pfilip04/chai/database/postgresql/repository"
 	"github.com/pfilip04/chai/global/enums"
 	"github.com/pfilip04/chai/global/errs"
+	"github.com/pfilip04/chai/mailing"
 	"github.com/pfilip04/chai/utils"
 )
 
@@ -53,18 +53,18 @@ func (j *JWTAuth) ChangePassword(w http.ResponseWriter, r *http.Request) {
 
 	if j.sender != nil && user.Mfa {
 
-		message, err := utils.SendMail(config.DbQuerying{
+		message, err := mailing.SendMail(mailing.DbQuerying{
 			Repo:         repo,
 			QueryTimeout: j.queryTimeout,
 			Ctx:          r.Context(),
-		}, config.Mailc{
+		}, mailing.Mailc{
 			MExp:    j.mailingExpiration.ChangePassExpiry,
 			MailCfg: j.mailingExpiration,
-		}, config.User{
-			UserID:   user.ID,
-			Username: user.Username,
-			Email:    user.Email,
-		}, config.MfaType{
+		}, mailing.User{
+			UserID:    user.ID,
+			Username:  user.Username,
+			UserEmail: user.Email,
+		}, mailing.MfaType{
 			ApiName:  enums.MfaChangePassword,
 			MailName: enums.PassChange,
 		}, j.sender)

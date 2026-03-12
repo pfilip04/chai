@@ -1,26 +1,25 @@
-package utils
+package mailing
 
 import (
 	"context"
 	"fmt"
 	"time"
 
-	"github.com/pfilip04/chai/config"
 	"github.com/pfilip04/chai/database/postgresql/repository"
 	"github.com/pfilip04/chai/global/errs"
-	"github.com/pfilip04/chai/mailing"
+	"github.com/pfilip04/chai/utils"
 )
 
-func SendMail(db config.DbQuerying, mailc config.Mailc, user config.User, mfat config.MfaType, s *mailing.Sender) (string, error) {
+func SendMail(db DbQuerying, mailc Mailc, user User, mfat MfaType, s *Sender) (string, error) {
 
-	code, err := GenerateOTP(10, 6)
+	code, err := utils.GenerateOTP(10, 6)
 
 	if err != nil {
 
 		return errs.ServerError.Err.Error(), errs.ServerError.Err
 	}
 
-	codeHash := HashToken(code)
+	codeHash := utils.HashToken(code)
 
 	codeExpiresAt := time.Now().UTC().Add(time.Duration(mailc.MExp))
 
@@ -42,13 +41,13 @@ func SendMail(db config.DbQuerying, mailc config.Mailc, user config.User, mfat c
 	ctxC, cancelC := context.WithTimeout(db.Ctx, db.QueryTimeout)
 	defer cancelC()
 
-	err = mailing.Mail(ctxC, mailc.MailCfg, *s, mailing.Verification{
+	err = Mail(ctxC, mailc.MailCfg, *s, Verification{
 		Id:      mfaId,
 		ApiName: mfat.ApiName,
 		Code:    code,
-	}, mailing.User{
+	}, User{
 		Username:  user.Username,
-		UserEmail: user.Email,
+		UserEmail: user.UserEmail,
 	})
 
 	if err != nil {

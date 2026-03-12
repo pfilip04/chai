@@ -5,10 +5,10 @@ import (
 	"fmt"
 	"net/http"
 
-	"github.com/pfilip04/chai/config"
 	"github.com/pfilip04/chai/database/postgresql/repository"
 	"github.com/pfilip04/chai/global/enums"
 	"github.com/pfilip04/chai/global/errs"
+	"github.com/pfilip04/chai/mailing"
 	"github.com/pfilip04/chai/utils"
 )
 
@@ -91,18 +91,18 @@ func (c *CookieAuth) Register(w http.ResponseWriter, r *http.Request) {
 
 	if c.sender != nil {
 
-		message, err := utils.SendMail(config.DbQuerying{
+		message, err := mailing.SendMail(mailing.DbQuerying{
 			Repo:         repo,
 			QueryTimeout: c.queryTimeout,
 			Ctx:          r.Context(),
-		}, config.Mailc{
+		}, mailing.Mailc{
 			MExp:    c.mailingExpiration.RegExpiry,
 			MailCfg: c.mailingExpiration,
-		}, config.User{
-			UserID:   userId,
-			Username: username,
-			Email:    email,
-		}, config.MfaType{
+		}, mailing.User{
+			UserID:    userId,
+			Username:  username,
+			UserEmail: email,
+		}, mailing.MfaType{
 			ApiName:  enums.MfaRegVerify,
 			MailName: enums.Reg,
 		}, c.sender)
