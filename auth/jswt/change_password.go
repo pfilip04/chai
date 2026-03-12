@@ -4,7 +4,6 @@ import (
 	"context"
 	"fmt"
 	"net/http"
-	"strings"
 
 	"github.com/pfilip04/chai/database/postgresql/repository"
 	"github.com/pfilip04/chai/global/enums"
@@ -15,17 +14,7 @@ import (
 
 func (j *JWTAuth) ChangePassword(w http.ResponseWriter, r *http.Request) {
 
-	authHeader := r.Header.Get("Authorization")
-
-	if authHeader == "" {
-
-		http.Error(w, errs.AuthError.Err.Error(), http.StatusUnauthorized)
-		return
-	}
-
-	token := strings.TrimPrefix(authHeader, "Bearer ")
-
-	userID, _, err := utils.CheckJWT(token, j.secret, j.issuer)
+	userID, _, err := j.Authorize(r)
 
 	if err != nil {
 
