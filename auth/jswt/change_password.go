@@ -5,12 +5,11 @@ import (
 	"fmt"
 	"net/http"
 	"strings"
-	"time"
 
+	"github.com/pfilip04/chai/config"
 	"github.com/pfilip04/chai/database/postgresql/repository"
 	"github.com/pfilip04/chai/global/enums"
 	"github.com/pfilip04/chai/global/errs"
-	"github.com/pfilip04/chai/mailing"
 	"github.com/pfilip04/chai/utils"
 )
 
@@ -20,7 +19,7 @@ func (j *JWTAuth) ChangePassword(w http.ResponseWriter, r *http.Request) {
 
 	if authHeader == "" {
 
-		http.Error(w, errs.AuthError.Error(), http.StatusUnauthorized)
+		http.Error(w, errs.AuthError.Err.Error(), http.StatusUnauthorized)
 		return
 	}
 
@@ -30,7 +29,7 @@ func (j *JWTAuth) ChangePassword(w http.ResponseWriter, r *http.Request) {
 
 	if err != nil {
 
-		http.Error(w, errs.AuthError.Error(), http.StatusUnauthorized)
+		http.Error(w, errs.AuthError.Err.Error(), http.StatusUnauthorized)
 		return
 	}
 
@@ -41,62 +40,41 @@ func (j *JWTAuth) ChangePassword(w http.ResponseWriter, r *http.Request) {
 
 	repo := repository.New(j.DB)
 
-	user, err := repo.GetUsernameEmailPasswordMfaById(ctxA, userID)
+	user, err := repo.GetUserByIdOrUsername(ctxA, repository.GetUserByIdOrUsernameParams{
+		Username: "",
+		ID:       userID,
+	})
 
 	if err != nil || !utils.CheckPasswordHash(password, user.PasswordHash) {
 
-		http.Error(w, errs.AuthError.Error(), http.StatusUnauthorized)
+		http.Error(w, errs.AuthError.Err.Error(), http.StatusUnauthorized)
 		return
 	}
 
 	if j.sender != nil && user.Mfa {
 
-		code, err := utils.GenerateOTP(10, 6)
+		message, err := utils.SendMail(config.DbQuerying{
+			Repo:         repo,
+			QueryTimeout: j.queryTimeout,
+			Ctx:          r.Context(),
+		}, config.Mailc{
+			MExp:    j.mailingExpiration.ChangePassExpiry,
+			MailCfg: j.mailingExpiration,
+		}, config.User{
+			UserID:   user.ID,
+			Username: user.Username,
+			Email:    user.Email,
+		}, config.MfaType{
+			ApiName:  enums.MfaChangePassword,
+			MailName: enums.PassChange,
+		}, j.sender)
 
 		if err != nil {
 
-			http.Error(w, "Server Error", http.StatusInternalServerError)
+			http.Error(w, errs.ServerError.Err.Error(), errs.ServerError.Status)
 			return
 		}
 
-		codeHash := utils.HashToken(code)
-
-		codeExpiresAt := time.Now().UTC().Add(time.Duration(j.mailingExpiration.ChangePassExpiry))
-
-		ctxB, cancelB := context.WithTimeout(r.Context(), j.queryTimeout)
-		defer cancelB()
-
-		mfaId, err := repo.CreateMfaMail(ctxB, repository.CreateMfaMailParams{
-			UserID:    userID,
-			MfaType:   enums.MfaChangePassword,
-			Code:      codeHash,
-			ExpiresAt: codeExpiresAt,
-		})
-
-		if err != nil {
-
-			http.Error(w, errs.DatabaseError.Error(), http.StatusInternalServerError)
-			return
-		}
-
-		ctxC, cancelC := context.WithTimeout(r.Context(), j.queryTimeout)
-		defer cancelC()
-
-		err = mailing.Mail(ctxC, j.mailingExpiration, *j.sender, mailing.Verification{
-			Id:      mfaId,
-			ApiName: enums.MfaChangePassword,
-			Code:    code,
-		}, mailing.User{
-			Username:  user.Username,
-			UserEmail: user.Email,
-		})
-
-		if err != nil {
-
-			http.Error(w, "Server Error", http.StatusInternalServerError)
-			return
-		}
-
-		fmt.Fprintln(w, "Password change mail sent successfully!")
+		fmt.Fprintln(w, message)
 	}
 }

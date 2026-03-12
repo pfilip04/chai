@@ -20,7 +20,7 @@ func (c *CookieAuth) SoftAuthorize(r *http.Request) (uuid.UUID, error) {
 
 	st, err := r.Cookie("session_token")
 	if err != nil || st.Value == "" {
-		return uuid.Nil, errs.AuthError
+		return uuid.Nil, errs.AuthError.Err
 	}
 
 	hashedSessionToken := utils.HashToken(st.Value)
@@ -33,7 +33,7 @@ func (c *CookieAuth) SoftAuthorize(r *http.Request) (uuid.UUID, error) {
 	userID, err := repo.GetUserIdBySession(ctxA, hashedSessionToken)
 
 	if err != nil {
-		return uuid.Nil, errs.AuthError
+		return uuid.Nil, errs.AuthError.Err
 	}
 
 	return userID, nil
@@ -45,7 +45,7 @@ func (c *CookieAuth) HardAuthorize(r *http.Request) (uuid.UUID, error) {
 
 	st, err := r.Cookie("session_token")
 	if err != nil || st.Value == "" {
-		return uuid.Nil, errs.AuthError
+		return uuid.Nil, errs.AuthError.Err
 	}
 
 	hashedSessionToken := utils.HashToken(st.Value)
@@ -53,7 +53,7 @@ func (c *CookieAuth) HardAuthorize(r *http.Request) (uuid.UUID, error) {
 	csrfToken := r.Header.Get("X-CSRF-Token")
 
 	if csrfToken == "" {
-		return uuid.Nil, errs.AuthError
+		return uuid.Nil, errs.AuthError.Err
 	}
 
 	ctxA, cancelA := context.WithTimeout(r.Context(), c.queryTimeout)
@@ -64,11 +64,11 @@ func (c *CookieAuth) HardAuthorize(r *http.Request) (uuid.UUID, error) {
 	sessionIdAndCsrf, err := repo.GetSessionIdAndCsrf(ctxA, hashedSessionToken)
 
 	if err != nil {
-		return uuid.Nil, errs.AuthError
+		return uuid.Nil, errs.AuthError.Err
 	}
 
 	if !utils.CheckToken(csrfToken, sessionIdAndCsrf.CsrfToken) {
-		return uuid.Nil, errs.AuthError
+		return uuid.Nil, errs.AuthError.Err
 	}
 
 	return sessionIdAndCsrf.ID, nil

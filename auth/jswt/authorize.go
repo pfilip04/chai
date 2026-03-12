@@ -15,7 +15,7 @@ func (j *JWTAuth) Authorize(r *http.Request) (uuid.UUID, uuid.UUID, error) {
 
 	if authHeader == "" {
 
-		return uuid.Nil, uuid.Nil, errs.AuthError
+		return uuid.Nil, uuid.Nil, errs.AuthError.Err
 	}
 
 	token := strings.TrimPrefix(authHeader, "Bearer ")
@@ -24,7 +24,7 @@ func (j *JWTAuth) Authorize(r *http.Request) (uuid.UUID, uuid.UUID, error) {
 
 	if err != nil {
 
-		return uuid.Nil, uuid.Nil, errs.AuthError
+		return uuid.Nil, uuid.Nil, errs.AuthError.Err
 	}
 
 	return userID, sessionID, nil

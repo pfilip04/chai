@@ -16,7 +16,7 @@ func (j *JWTAuth) Refresh(w http.ResponseWriter, r *http.Request) {
 	rf := r.Header.Get("REFRESH-TOKEN")
 	if rf == "" {
 
-		http.Error(w, errs.AuthError.Error(), http.StatusUnauthorized)
+		http.Error(w, errs.AuthError.Err.Error(), http.StatusUnauthorized)
 		return
 	}
 
@@ -73,7 +73,7 @@ func (j *JWTAuth) Refresh(w http.ResponseWriter, r *http.Request) {
 
 	if err != nil {
 
-		http.Error(w, errs.DatabaseError.Error(), http.StatusInternalServerError)
+		http.Error(w, errs.DatabaseError.Err.Error(), http.StatusInternalServerError)
 		return
 	}
 
@@ -106,7 +106,7 @@ func (j *JWTAuth) Refresh(w http.ResponseWriter, r *http.Request) {
 
 	if err != nil {
 
-		http.Error(w, errs.DatabaseError.Error(), http.StatusInternalServerError)
+		http.Error(w, errs.DatabaseError.Err.Error(), http.StatusInternalServerError)
 		return
 	}
 
@@ -117,7 +117,7 @@ func (j *JWTAuth) Refresh(w http.ResponseWriter, r *http.Request) {
 
 	if err := tx.Commit(ctxC); err != nil {
 
-		http.Error(w, errs.DatabaseError.Error(), http.StatusInternalServerError)
+		http.Error(w, errs.DatabaseError.Err.Error(), http.StatusInternalServerError)
 		return
 	}
 

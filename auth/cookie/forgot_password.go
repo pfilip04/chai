@@ -4,12 +4,11 @@ import (
 	"context"
 	"fmt"
 	"net/http"
-	"time"
 
+	"github.com/pfilip04/chai/config"
 	"github.com/pfilip04/chai/database/postgresql/repository"
 	"github.com/pfilip04/chai/global/enums"
 	"github.com/pfilip04/chai/global/errs"
-	"github.com/pfilip04/chai/mailing"
 	"github.com/pfilip04/chai/utils"
 )
 
@@ -26,7 +25,7 @@ func (c *CookieAuth) ForgotPassword(w http.ResponseWriter, r *http.Request) {
 
 	if err != nil {
 
-		http.Error(w, errs.DatabaseError.Error(), http.StatusBadRequest)
+		http.Error(w, errs.DatabaseError.Err.Error(), http.StatusBadRequest)
 		return
 	}
 
@@ -36,51 +35,27 @@ func (c *CookieAuth) ForgotPassword(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	code, err := utils.GenerateOTP(10, 6)
+	message, err := utils.SendMail(config.DbQuerying{
+		Repo:         repo,
+		QueryTimeout: c.queryTimeout,
+		Ctx:          r.Context(),
+	}, config.Mailc{
+		MExp:    c.mailingExpiration.ForgotPassExpiry,
+		MailCfg: c.mailingExpiration,
+	}, config.User{
+		UserID:   user.ID,
+		Username: user.Username,
+		Email:    user.Email,
+	}, config.MfaType{
+		ApiName:  enums.MfaForgotPassword,
+		MailName: enums.PassReset,
+	}, c.sender)
 
 	if err != nil {
 
-		http.Error(w, "Server Error", http.StatusInternalServerError)
+		http.Error(w, errs.ServerError.Err.Error(), errs.ServerError.Status)
 		return
 	}
 
-	codeHash := utils.HashToken(code)
-
-	codeExpiresAt := time.Now().UTC().Add(time.Duration(c.mailingExpiration.ForgotPassExpiry))
-
-	ctxB, cancelB := context.WithTimeout(r.Context(), c.queryTimeout)
-	defer cancelB()
-
-	mfaId, err := repo.CreateMfaMail(ctxB, repository.CreateMfaMailParams{
-		UserID:    user.ID,
-		MfaType:   enums.MfaForgotPassword,
-		Code:      codeHash,
-		ExpiresAt: codeExpiresAt,
-	})
-
-	if err != nil {
-
-		http.Error(w, errs.DatabaseError.Error(), http.StatusInternalServerError)
-		return
-	}
-
-	ctxC, cancelC := context.WithTimeout(r.Context(), c.queryTimeout)
-	defer cancelC()
-
-	err = mailing.Mail(ctxC, c.mailingExpiration, *c.sender, mailing.Verification{
-		Id:      mfaId,
-		ApiName: enums.MfaForgotPassword,
-		Code:    code,
-	}, mailing.User{
-		Username:  user.Username,
-		UserEmail: user.Email,
-	})
-
-	if err != nil {
-
-		http.Error(w, "Server Error", http.StatusInternalServerError)
-		return
-	}
-
-	fmt.Fprintln(w, "Password-reset mail sent successfully!")
+	fmt.Fprintln(w, message)
 }

@@ -3,13 +3,9 @@ INSERT INTO users (username, email, password_hash, mfa)
 VALUES ($1, $2, $3, $4) 
 RETURNING id;
 
--- name: GetIdPasswordEmailVerifiedMfa :one
-SELECT id, password_hash, email_verified, mfa FROM users 
-WHERE username=$1;
-
--- name: GetUsernameEmailPasswordMfaById :one
-SELECT username, email, password_hash, mfa FROM users 
-WHERE id=$1;
+-- name: GetUserByIdOrUsername :one
+SELECT id, username, email, password_hash, email_verified, mfa FROM users 
+WHERE username=$1 OR id=$2;
 
 -- name: InsertCookieSession :one
 INSERT INTO sessions (user_id, session_token, csrf_token, platform, expires_at) 

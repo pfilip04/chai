@@ -196,30 +196,6 @@ func (q *Queries) FindUserByUsernameOrEmail(ctx context.Context, username string
 	return i, err
 }
 
-const getIdPasswordEmailVerifiedMfa = `-- name: GetIdPasswordEmailVerifiedMfa :one
-SELECT id, password_hash, email_verified, mfa FROM users 
-WHERE username=$1
-`
-
-type GetIdPasswordEmailVerifiedMfaRow struct {
-	ID            uuid.UUID `json:"id"`
-	PasswordHash  string    `json:"password_hash"`
-	EmailVerified bool      `json:"email_verified"`
-	Mfa           bool      `json:"mfa"`
-}
-
-func (q *Queries) GetIdPasswordEmailVerifiedMfa(ctx context.Context, username string) (GetIdPasswordEmailVerifiedMfaRow, error) {
-	row := q.db.QueryRow(ctx, getIdPasswordEmailVerifiedMfa, username)
-	var i GetIdPasswordEmailVerifiedMfaRow
-	err := row.Scan(
-		&i.ID,
-		&i.PasswordHash,
-		&i.EmailVerified,
-		&i.Mfa,
-	)
-	return i, err
-}
-
 const getSessionIdAndCsrf = `-- name: GetSessionIdAndCsrf :one
 SELECT id, csrf_token FROM sessions 
 WHERE session_token=$1 AND expires_at > NOW()
@@ -249,6 +225,39 @@ func (q *Queries) GetSessionIdByRefresh(ctx context.Context, refreshToken string
 	return session_id, err
 }
 
+const getUserByIdOrUsername = `-- name: GetUserByIdOrUsername :one
+SELECT id, username, email, password_hash, email_verified, mfa FROM users 
+WHERE username=$1 OR id=$2
+`
+
+type GetUserByIdOrUsernameParams struct {
+	Username string    `json:"username"`
+	ID       uuid.UUID `json:"id"`
+}
+
+type GetUserByIdOrUsernameRow struct {
+	ID            uuid.UUID `json:"id"`
+	Username      string    `json:"username"`
+	Email         string    `json:"email"`
+	PasswordHash  string    `json:"password_hash"`
+	EmailVerified bool      `json:"email_verified"`
+	Mfa           bool      `json:"mfa"`
+}
+
+func (q *Queries) GetUserByIdOrUsername(ctx context.Context, arg GetUserByIdOrUsernameParams) (GetUserByIdOrUsernameRow, error) {
+	row := q.db.QueryRow(ctx, getUserByIdOrUsername, arg.Username, arg.ID)
+	var i GetUserByIdOrUsernameRow
+	err := row.Scan(
+		&i.ID,
+		&i.Username,
+		&i.Email,
+		&i.PasswordHash,
+		&i.EmailVerified,
+		&i.Mfa,
+	)
+	return i, err
+}
+
 const getUserIdBySession = `-- name: GetUserIdBySession :one
 SELECT user_id FROM sessions 
 WHERE session_token=$1 AND expires_at > NOW()
@@ -271,30 +280,6 @@ func (q *Queries) GetUserIdBySessionId(ctx context.Context, id uuid.UUID) (uuid.
 	var user_id uuid.UUID
 	err := row.Scan(&user_id)
 	return user_id, err
-}
-
-const getUsernameEmailPasswordMfaById = `-- name: GetUsernameEmailPasswordMfaById :one
-SELECT username, email, password_hash, mfa FROM users 
-WHERE id=$1
-`
-
-type GetUsernameEmailPasswordMfaByIdRow struct {
-	Username     string `json:"username"`
-	Email        string `json:"email"`
-	PasswordHash string `json:"password_hash"`
-	Mfa          bool   `json:"mfa"`
-}
-
-func (q *Queries) GetUsernameEmailPasswordMfaById(ctx context.Context, id uuid.UUID) (GetUsernameEmailPasswordMfaByIdRow, error) {
-	row := q.db.QueryRow(ctx, getUsernameEmailPasswordMfaById, id)
-	var i GetUsernameEmailPasswordMfaByIdRow
-	err := row.Scan(
-		&i.Username,
-		&i.Email,
-		&i.PasswordHash,
-		&i.Mfa,
-	)
-	return i, err
 }
 
 const insertCookieSession = `-- name: InsertCookieSession :one

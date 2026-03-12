@@ -6,3 +6,10 @@ var (
 	MfaForgotPassword = "forgot-password-verify"
 	MfaChangePassword = "change-password-verify"
 )
+
+var (
+	Reg        = "Register"
+	Login      = "Login"
+	PassReset  = "Password-reset"
+	PassChange = "Password-change"
+)

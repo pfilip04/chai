@@ -6,10 +6,11 @@ import (
 	"net/http"
 	"time"
 
+	"github.com/google/uuid"
+	"github.com/pfilip04/chai/config"
 	"github.com/pfilip04/chai/database/postgresql/repository"
 	"github.com/pfilip04/chai/global/enums"
 	"github.com/pfilip04/chai/global/errs"
-	"github.com/pfilip04/chai/mailing"
 	"github.com/pfilip04/chai/utils"
 )
 
@@ -26,7 +27,10 @@ func (c *CookieAuth) Login(w http.ResponseWriter, r *http.Request) {
 
 	repo := repository.New(c.DB)
 
-	user, err := repo.GetIdPasswordEmailVerifiedMfa(ctxA, username)
+	user, err := repo.GetUserByIdOrUsername(ctxA, repository.GetUserByIdOrUsernameParams{
+		Username: username,
+		ID:       uuid.Nil,
+	})
 
 	if err != nil || !utils.CheckPasswordHash(password, user.PasswordHash) {
 
@@ -38,70 +42,35 @@ func (c *CookieAuth) Login(w http.ResponseWriter, r *http.Request) {
 
 		if !user.EmailVerified {
 
-			http.Error(w, errs.AuthError.Error(), http.StatusUnauthorized)
+			http.Error(w, errs.AuthError.Err.Error(), http.StatusUnauthorized)
 			return
 		}
 
 		if user.Mfa {
 
-			code, err := utils.GenerateOTP(10, 6)
+			message, err := utils.SendMail(config.DbQuerying{
+				Repo:         repo,
+				QueryTimeout: c.queryTimeout,
+				Ctx:          r.Context(),
+			}, config.Mailc{
+				MExp:    c.mailingExpiration.MfaLoginExpiry,
+				MailCfg: c.mailingExpiration,
+			}, config.User{
+				UserID:   user.ID,
+				Username: username,
+				Email:    user.Email,
+			}, config.MfaType{
+				ApiName:  enums.MfaLoginVerify,
+				MailName: enums.Login,
+			}, c.sender)
 
 			if err != nil {
 
-				http.Error(w, "Server Error", http.StatusInternalServerError)
+				http.Error(w, errs.ServerError.Err.Error(), errs.ServerError.Status)
 				return
 			}
 
-			codeHash := utils.HashToken(code)
-
-			codeExpiresAt := time.Now().UTC().Add(time.Duration(c.mailingExpiration.MfaLoginExpiry))
-
-			ctxB, cancelB := context.WithTimeout(r.Context(), c.queryTimeout)
-			defer cancelB()
-
-			user, err := repo.FindUserByUsernameOrEmail(ctxB, username)
-
-			if err != nil {
-
-				http.Error(w, errs.DatabaseError.Error(), http.StatusInternalServerError)
-				return
-			}
-
-			ctxC, cancelC := context.WithTimeout(r.Context(), c.queryTimeout)
-			defer cancelC()
-
-			mfaId, err := repo.CreateMfaMail(ctxC, repository.CreateMfaMailParams{
-				UserID:    user.ID,
-				MfaType:   enums.MfaLoginVerify,
-				Code:      codeHash,
-				ExpiresAt: codeExpiresAt,
-			})
-
-			if err != nil {
-
-				http.Error(w, errs.DatabaseError.Error(), http.StatusInternalServerError)
-				return
-			}
-
-			ctxD, cancelD := context.WithTimeout(r.Context(), c.queryTimeout)
-			defer cancelD()
-
-			err = mailing.Mail(ctxD, c.mailingExpiration, *c.sender, mailing.Verification{
-				Id:      mfaId,
-				ApiName: enums.MfaLoginVerify,
-				Code:    code,
-			}, mailing.User{
-				Username:  username,
-				UserEmail: user.Email,
-			})
-
-			if err != nil {
-
-				http.Error(w, "Server Error", http.StatusInternalServerError)
-				return
-			}
-
-			fmt.Println(w, "Login mail succesfully sent")
+			fmt.Fprintln(w, message)
 			return
 		}
 	}
@@ -147,7 +116,7 @@ func (c *CookieAuth) Login(w http.ResponseWriter, r *http.Request) {
 
 	if err != nil {
 
-		http.Error(w, errs.DatabaseError.Error(), http.StatusInternalServerError)
+		http.Error(w, errs.DatabaseError.Err.Error(), http.StatusInternalServerError)
 		return
 	}
 
@@ -165,7 +134,7 @@ func (c *CookieAuth) Login(w http.ResponseWriter, r *http.Request) {
 
 	if err != nil {
 
-		http.Error(w, errs.DatabaseError.Error(), http.StatusInternalServerError)
+		http.Error(w, errs.DatabaseError.Err.Error(), http.StatusInternalServerError)
 		return
 	}
 
@@ -177,12 +146,12 @@ func (c *CookieAuth) Login(w http.ResponseWriter, r *http.Request) {
 
 	if err != nil {
 
-		http.Error(w, errs.DatabaseError.Error(), http.StatusInternalServerError)
+		http.Error(w, errs.DatabaseError.Err.Error(), http.StatusInternalServerError)
 		return
 	}
 
 	if err := tx.Commit(ctxE); err != nil {
-		http.Error(w, errs.DatabaseError.Error(), http.StatusInternalServerError)
+		http.Error(w, errs.DatabaseError.Err.Error(), http.StatusInternalServerError)
 		return
 	}
 

@@ -17,7 +17,7 @@ func (c *CookieAuth) Refresh(w http.ResponseWriter, r *http.Request) {
 
 	if err != nil || rf.Value == "" {
 
-		http.Error(w, errs.AuthError.Error(), http.StatusUnauthorized)
+		http.Error(w, errs.AuthError.Err.Error(), http.StatusUnauthorized)
 		return
 	}
 
@@ -74,7 +74,7 @@ func (c *CookieAuth) Refresh(w http.ResponseWriter, r *http.Request) {
 
 	if err != nil {
 
-		http.Error(w, errs.DatabaseError.Error(), http.StatusInternalServerError)
+		http.Error(w, errs.DatabaseError.Err.Error(), http.StatusInternalServerError)
 		return
 	}
 
@@ -109,7 +109,7 @@ func (c *CookieAuth) Refresh(w http.ResponseWriter, r *http.Request) {
 
 	if err != nil {
 
-		http.Error(w, errs.DatabaseError.Error(), http.StatusInternalServerError)
+		http.Error(w, errs.DatabaseError.Err.Error(), http.StatusInternalServerError)
 		return
 	}
 
@@ -120,7 +120,7 @@ func (c *CookieAuth) Refresh(w http.ResponseWriter, r *http.Request) {
 
 	if err := tx.Commit(ctxB); err != nil {
 
-		http.Error(w, errs.DatabaseError.Error(), http.StatusInternalServerError)
+		http.Error(w, errs.DatabaseError.Err.Error(), http.StatusInternalServerError)
 		return
 	}
 

@@ -4,12 +4,11 @@ import (
 	"context"
 	"fmt"
 	"net/http"
-	"time"
 
+	"github.com/pfilip04/chai/config"
 	"github.com/pfilip04/chai/database/postgresql/repository"
 	"github.com/pfilip04/chai/global/enums"
 	"github.com/pfilip04/chai/global/errs"
-	"github.com/pfilip04/chai/mailing"
 	"github.com/pfilip04/chai/utils"
 )
 
@@ -19,7 +18,7 @@ func (c *CookieAuth) ChangePassword(w http.ResponseWriter, r *http.Request) {
 
 	if err != nil {
 
-		http.Error(w, errs.AuthError.Error(), http.StatusUnauthorized)
+		http.Error(w, errs.AuthError.Err.Error(), http.StatusUnauthorized)
 		return
 	}
 
@@ -28,94 +27,60 @@ func (c *CookieAuth) ChangePassword(w http.ResponseWriter, r *http.Request) {
 	ctxA, cancelA := context.WithTimeout(r.Context(), c.queryTimeout)
 	defer cancelA()
 
-	tx, err := c.DB.Begin(ctxA)
-
-	if err != nil {
-
-		http.Error(w, errs.DatabaseError.Error(), http.StatusInternalServerError)
-		return
-	}
-
-	defer tx.Rollback(ctxA)
-
-	repo := repository.New(tx)
+	repo := repository.New(c.DB)
 
 	userID, err := repo.GetUserIdBySessionId(ctxA, sessionID)
 
 	if err != nil {
 
-		http.Error(w, errs.DatabaseError.Error(), http.StatusInternalServerError)
+		http.Error(w, errs.DatabaseError.Err.Error(), http.StatusInternalServerError)
 		return
 	}
 
-	user, err := repo.GetUsernameEmailPasswordMfaById(ctxA, userID)
+	ctxB, cancelB := context.WithTimeout(r.Context(), c.queryTimeout)
+	defer cancelB()
+
+	user, err := repo.GetUserByIdOrUsername(ctxB, repository.GetUserByIdOrUsernameParams{
+		Username: "",
+		ID:       userID,
+	})
 
 	if err != nil {
 
-		http.Error(w, errs.DatabaseError.Error(), http.StatusInternalServerError)
-		return
-	}
-
-	if err := tx.Commit(ctxA); err != nil {
-
-		http.Error(w, errs.DatabaseError.Error(), http.StatusInternalServerError)
+		http.Error(w, errs.DatabaseError.Err.Error(), http.StatusInternalServerError)
 		return
 	}
 
 	if !utils.CheckPasswordHash(password, user.PasswordHash) {
 
-		http.Error(w, errs.AuthError.Error(), http.StatusUnauthorized)
+		http.Error(w, errs.AuthError.Err.Error(), http.StatusUnauthorized)
 		return
 	}
 
 	if c.sender != nil && user.Mfa {
 
-		code, err := utils.GenerateOTP(10, 6)
+		message, err := utils.SendMail(config.DbQuerying{
+			Repo:         repo,
+			QueryTimeout: c.queryTimeout,
+			Ctx:          r.Context(),
+		}, config.Mailc{
+			MExp:    c.mailingExpiration.ChangePassExpiry,
+			MailCfg: c.mailingExpiration,
+		}, config.User{
+			UserID:   user.ID,
+			Username: user.Username,
+			Email:    user.Email,
+		}, config.MfaType{
+			ApiName:  enums.MfaChangePassword,
+			MailName: enums.PassChange,
+		}, c.sender)
 
 		if err != nil {
 
-			http.Error(w, "Server Error", http.StatusInternalServerError)
+			http.Error(w, errs.ServerError.Err.Error(), errs.ServerError.Status)
 			return
 		}
 
-		codeHash := utils.HashToken(code)
-
-		codeExpiresAt := time.Now().UTC().Add(time.Duration(c.mailingExpiration.ChangePassExpiry))
-
-		ctxB, cancelB := context.WithTimeout(r.Context(), c.queryTimeout)
-		defer cancelB()
-
-		mfaId, err := repo.CreateMfaMail(ctxB, repository.CreateMfaMailParams{
-			UserID:    userID,
-			MfaType:   enums.MfaChangePassword,
-			Code:      codeHash,
-			ExpiresAt: codeExpiresAt,
-		})
-
-		if err != nil {
-
-			http.Error(w, errs.DatabaseError.Error(), http.StatusInternalServerError)
-			return
-		}
-
-		ctxC, cancelC := context.WithTimeout(r.Context(), c.queryTimeout)
-		defer cancelC()
-
-		err = mailing.Mail(ctxC, c.mailingExpiration, *c.sender, mailing.Verification{
-			Id:      mfaId,
-			ApiName: enums.MfaChangePassword,
-			Code:    code,
-		}, mailing.User{
-			Username:  user.Username,
-			UserEmail: user.Email,
-		})
-
-		if err != nil {
-
-			http.Error(w, "Server Error", http.StatusInternalServerError)
-			return
-		}
-
-		fmt.Fprintln(w, "Password change mail sent successfully!")
+		fmt.Fprintln(w, message)
 	}
 }

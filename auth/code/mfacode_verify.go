@@ -17,7 +17,7 @@ func MfaVerify(db DbQuery, info Credentials) (bool, error) {
 
 	if err != nil {
 
-		return false, errs.DatabaseError
+		return false, errs.DatabaseError.Err
 	}
 
 	defer tx.Rollback(ctxA)
@@ -31,7 +31,7 @@ func MfaVerify(db DbQuery, info Credentials) (bool, error) {
 
 	if err != nil {
 
-		return false, errs.DatabaseError
+		return false, errs.DatabaseError.Err
 	}
 
 	if !utils.CheckToken(info.code, dbCode) {
@@ -43,17 +43,17 @@ func MfaVerify(db DbQuery, info Credentials) (bool, error) {
 
 	if err != nil {
 
-		return false, errs.DatabaseError
+		return false, errs.DatabaseError.Err
 	}
 
 	if rows == 0 {
 
-		return false, errs.DatabaseError
+		return false, errs.DatabaseError.Err
 	}
 
 	if err = tx.Commit(ctxA); err != nil {
 
-		return false, errs.DatabaseError
+		return false, errs.DatabaseError.Err
 	}
 
 	return true, nil
