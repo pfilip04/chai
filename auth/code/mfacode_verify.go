@@ -3,12 +3,13 @@ package code
 import (
 	"context"
 
+	"github.com/google/uuid"
 	"github.com/pfilip04/chai/database/postgresql/repository"
 	"github.com/pfilip04/chai/global/errs"
 	"github.com/pfilip04/chai/utils"
 )
 
-func MfaVerify(db DbQuery, info Credentials) (bool, error) {
+func MfaVerify(db DbQuery, info Credentials) (uuid.UUID, bool, error) {
 
 	ctxA, cancelA := context.WithTimeout(db.ctx, db.queryTimeout)
 	defer cancelA()
@@ -17,44 +18,44 @@ func MfaVerify(db DbQuery, info Credentials) (bool, error) {
 
 	if err != nil {
 
-		return false, errs.DatabaseError.Err
+		return uuid.Nil, false, errs.DatabaseError.Err
 	}
 
 	defer tx.Rollback(ctxA)
 
 	repo := repository.New(tx)
 
-	dbCode, err := repo.CheckVerificationCode(ctxA, repository.CheckVerificationCodeParams{
+	UserAndCode, err := repo.CheckVerificationCode(ctxA, repository.CheckVerificationCodeParams{
 		ID:      info.mfaId,
 		MfaType: info.apiName,
 	})
 
 	if err != nil {
 
-		return false, errs.DatabaseError.Err
+		return uuid.Nil, false, errs.DatabaseError.Err
 	}
 
-	if !utils.CheckToken(info.code, dbCode) {
+	if !utils.CheckToken(info.code, UserAndCode.Code) {
 
-		return false, nil
+		return uuid.Nil, false, nil
 	}
 
 	rows, err := repo.ClearMfaMail(ctxA, info.mfaId)
 
 	if err != nil {
 
-		return false, errs.DatabaseError.Err
+		return uuid.Nil, false, errs.DatabaseError.Err
 	}
 
 	if rows == 0 {
 
-		return false, errs.DatabaseError.Err
+		return uuid.Nil, false, errs.DatabaseError.Err
 	}
 
 	if err = tx.Commit(ctxA); err != nil {
 
-		return false, errs.DatabaseError.Err
+		return uuid.Nil, false, errs.DatabaseError.Err
 	}
 
-	return true, nil
+	return UserAndCode.UserID, true, nil
 }

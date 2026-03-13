@@ -9,8 +9,9 @@ import (
 )
 
 type VerificationCode struct {
-	DB           *pgxpool.Pool
-	queryTimeout time.Duration
+	DB                 *pgxpool.Pool
+	queryTimeout       time.Duration
+	mfaTokenExpiration time.Duration
 }
 
 type DbQuery struct {
@@ -25,9 +26,10 @@ type Credentials struct {
 	apiName string
 }
 
-func New(db *pgxpool.Pool, queryTimeout time.Duration) *VerificationCode {
+func New(db *pgxpool.Pool, queryTimeout time.Duration, mfaExp time.Duration) *VerificationCode {
 	return &VerificationCode{
-		DB:           db,
-		queryTimeout: queryTimeout,
+		DB:                 db,
+		queryTimeout:       queryTimeout,
+		mfaTokenExpiration: mfaExp,
 	}
 }

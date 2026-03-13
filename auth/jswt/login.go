@@ -3,15 +3,12 @@ package jswt
 import (
 	"context"
 	"encoding/json"
-	"fmt"
 	"net/http"
 	"time"
 
 	"github.com/google/uuid"
 	"github.com/pfilip04/chai/database/postgresql/repository"
-	"github.com/pfilip04/chai/global/enums"
 	"github.com/pfilip04/chai/global/errs"
-	"github.com/pfilip04/chai/mailing"
 	"github.com/pfilip04/chai/utils"
 )
 
@@ -44,34 +41,6 @@ func (j *JWTAuth) Login(w http.ResponseWriter, r *http.Request) {
 		if !user.EmailVerified {
 
 			http.Error(w, errs.AuthError.Err.Error(), http.StatusUnauthorized)
-			return
-		}
-
-		if user.Mfa {
-
-			message, err := mailing.SendMail(mailing.DbQuerying{
-				Repo:         repo,
-				QueryTimeout: j.queryTimeout,
-				Ctx:          r.Context(),
-			}, mailing.Mailc{
-				MExp:    j.mailingExpiration.MfaLoginExpiry,
-				MailCfg: j.mailingExpiration,
-			}, mailing.User{
-				UserID:    user.ID,
-				Username:  username,
-				UserEmail: user.Email,
-			}, mailing.MfaType{
-				ApiName:  enums.MfaLoginVerify,
-				MailName: enums.Login,
-			}, j.sender)
-
-			if err != nil {
-
-				http.Error(w, errs.ServerError.Err.Error(), errs.ServerError.Status)
-				return
-			}
-
-			fmt.Fprintln(w, message)
 			return
 		}
 	}

@@ -12,16 +12,18 @@ type CookieAuth struct {
 	DB                     *pgxpool.Pool
 	queryTimeout           time.Duration
 	sessionTokenExpiration time.Duration
+	mfaTokenExpiration     time.Duration
 	refreshTokenExpiration time.Duration
 	sender                 *mailing.Sender
 	mailingExpiration      config.MailConfig
 }
 
-func New(db *pgxpool.Pool, queryTimeout time.Duration, sessionExpiration time.Duration, refreshExpiration time.Duration, sendr *mailing.Sender, mailing config.MailConfig) *CookieAuth {
+func New(db *pgxpool.Pool, queryTimeout time.Duration, sessionExpiration time.Duration, mfaExpiration time.Duration, refreshExpiration time.Duration, sendr *mailing.Sender, mailing config.MailConfig) *CookieAuth {
 	return &CookieAuth{
 		DB:                     db,
 		queryTimeout:           queryTimeout,
 		sessionTokenExpiration: sessionExpiration,
+		mfaTokenExpiration:     mfaExpiration,
 		refreshTokenExpiration: refreshExpiration,
 		sender:                 sendr,
 		mailingExpiration:      mailing,

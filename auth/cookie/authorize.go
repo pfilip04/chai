@@ -14,31 +14,6 @@ import (
 //
 // Cookie checking for authorization
 
-// Auth for GET
-
-func (c *CookieAuth) SoftAuthorize(r *http.Request) (uuid.UUID, error) {
-
-	st, err := r.Cookie("session_token")
-	if err != nil || st.Value == "" {
-		return uuid.Nil, errs.AuthError.Err
-	}
-
-	hashedSessionToken := utils.HashToken(st.Value)
-
-	ctxA, cancelA := context.WithTimeout(r.Context(), c.queryTimeout)
-	defer cancelA()
-
-	repo := repository.New(c.DB)
-
-	userID, err := repo.GetUserIdBySession(ctxA, hashedSessionToken)
-
-	if err != nil {
-		return uuid.Nil, errs.AuthError.Err
-	}
-
-	return userID, nil
-}
-
 // Auth for POST/PATCH/PUT/DELETE...
 
 func (c *CookieAuth) HardAuthorize(r *http.Request) (uuid.UUID, error) {
@@ -72,4 +47,30 @@ func (c *CookieAuth) HardAuthorize(r *http.Request) (uuid.UUID, error) {
 	}
 
 	return sessionIdAndCsrf.ID, nil
+}
+
+// Auth for Mfa
+
+func (c *CookieAuth) MfaAuthorize(r *http.Request) (uuid.UUID, error) {
+
+	mt, err := r.Cookie("mfa_session_token")
+	if err != nil || mt.Value == "" {
+		return uuid.Nil, errs.AuthError.Err
+	}
+
+	hashedMfaToken := utils.HashToken(mt.Value)
+
+	ctxA, cancelA := context.WithTimeout(r.Context(), c.queryTimeout)
+	defer cancelA()
+
+	repo := repository.New(c.DB)
+
+	userID, err := repo.CheckMfaSession(ctxA, hashedMfaToken)
+
+	if err != nil {
+
+		return uuid.Nil, errs.AuthError.Err
+	}
+
+	return userID, nil
 }
