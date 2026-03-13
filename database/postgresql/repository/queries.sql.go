@@ -12,8 +12,20 @@ import (
 	"github.com/google/uuid"
 )
 
+const checkMfaSession = `-- name: CheckMfaSession :one
+SELECT user_id FROM mfa_session
+WHERE mfa_session_token=$1 AND expires_at > NOW()
+`
+
+func (q *Queries) CheckMfaSession(ctx context.Context, mfaSessionToken string) (uuid.UUID, error) {
+	row := q.db.QueryRow(ctx, checkMfaSession, mfaSessionToken)
+	var user_id uuid.UUID
+	err := row.Scan(&user_id)
+	return user_id, err
+}
+
 const checkVerificationCode = `-- name: CheckVerificationCode :one
-SELECT code FROM mfa_mail 
+SELECT user_id, code FROM mfa_mail 
 WHERE id=$1 AND mfa_type=$2 AND expires_at > NOW()
 `
 
@@ -22,11 +34,16 @@ type CheckVerificationCodeParams struct {
 	MfaType string    `json:"mfa_type"`
 }
 
-func (q *Queries) CheckVerificationCode(ctx context.Context, arg CheckVerificationCodeParams) (string, error) {
+type CheckVerificationCodeRow struct {
+	UserID uuid.UUID `json:"user_id"`
+	Code   string    `json:"code"`
+}
+
+func (q *Queries) CheckVerificationCode(ctx context.Context, arg CheckVerificationCodeParams) (CheckVerificationCodeRow, error) {
 	row := q.db.QueryRow(ctx, checkVerificationCode, arg.ID, arg.MfaType)
-	var code string
-	err := row.Scan(&code)
-	return code, err
+	var i CheckVerificationCodeRow
+	err := row.Scan(&i.UserID, &i.Code)
+	return i, err
 }
 
 const clearMfaMail = `-- name: ClearMfaMail :execrows
@@ -36,6 +53,19 @@ WHERE id=$1
 
 func (q *Queries) ClearMfaMail(ctx context.Context, id uuid.UUID) (int64, error) {
 	result, err := q.db.Exec(ctx, clearMfaMail, id)
+	if err != nil {
+		return 0, err
+	}
+	return result.RowsAffected(), nil
+}
+
+const clearMfaSessions = `-- name: ClearMfaSessions :execrows
+DELETE FROM mfa_session 
+WHERE user_id=$1
+`
+
+func (q *Queries) ClearMfaSessions(ctx context.Context, userID uuid.UUID) (int64, error) {
+	result, err := q.db.Exec(ctx, clearMfaSessions, userID)
 	if err != nil {
 		return 0, err
 	}
@@ -94,6 +124,22 @@ func (q *Queries) CreateMfaMail(ctx context.Context, arg CreateMfaMailParams) (u
 	var id uuid.UUID
 	err := row.Scan(&id)
 	return id, err
+}
+
+const createMfaSession = `-- name: CreateMfaSession :exec
+INSERT INTO mfa_session (user_id, mfa_session_token, expires_at) 
+VALUES ($1, $2, $3)
+`
+
+type CreateMfaSessionParams struct {
+	UserID          uuid.UUID `json:"user_id"`
+	MfaSessionToken string    `json:"mfa_session_token"`
+	ExpiresAt       time.Time `json:"expires_at"`
+}
+
+func (q *Queries) CreateMfaSession(ctx context.Context, arg CreateMfaSessionParams) error {
+	_, err := q.db.Exec(ctx, createMfaSession, arg.UserID, arg.MfaSessionToken, arg.ExpiresAt)
+	return err
 }
 
 const createUser = `-- name: CreateUser :one
@@ -409,6 +455,26 @@ func (q *Queries) UpdateRefreshToken(ctx context.Context, arg UpdateRefreshToken
 		arg.RefreshToken_2,
 		arg.SessionID,
 	)
+	if err != nil {
+		return 0, err
+	}
+	return result.RowsAffected(), nil
+}
+
+const updateUserPassword = `-- name: UpdateUserPassword :execrows
+UPDATE users 
+SET password_hash=$1, updated_at=$2 
+WHERE id=$3
+`
+
+type UpdateUserPasswordParams struct {
+	PasswordHash string    `json:"password_hash"`
+	UpdatedAt    time.Time `json:"updated_at"`
+	ID           uuid.UUID `json:"id"`
+}
+
+func (q *Queries) UpdateUserPassword(ctx context.Context, arg UpdateUserPasswordParams) (int64, error) {
+	result, err := q.db.Exec(ctx, updateUserPassword, arg.PasswordHash, arg.UpdatedAt, arg.ID)
 	if err != nil {
 		return 0, err
 	}

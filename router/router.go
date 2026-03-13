@@ -78,11 +78,11 @@ func NewRouter(ctx context.Context, configurations string) (chi.Router, *pgxpool
 
 	app := NewApp(dbpool)
 
-	app.InitCookie(hcfg.Cookie, senderinfo, mcfg)
+	app.InitCookie(hcfg.Cookie, hcfg.MfaExp, senderinfo, mcfg)
 
-	app.InitJWT(hcfg.JWT, senderinfo, mcfg, secret)
+	app.InitJWT(hcfg.JWT, hcfg.MfaExp, senderinfo, mcfg, secret)
 
-	app.InitCode(hcfg.Code)
+	app.InitCode(hcfg.Code, hcfg.MfaExp)
 
 	//
 	// Router init

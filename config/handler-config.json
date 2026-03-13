@@ -26,5 +26,7 @@
         "specialName": "chai_auth_token"
     },
 
+    "mfa-token-expiration": "5m",
+
     "verification-code-queryTimeout": "5s"
 }

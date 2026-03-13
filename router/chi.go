@@ -31,6 +31,7 @@ func (app *App) NewChiRouter(routercfg config.RouterConfig) chi.Router {
 	// Api URLs
 
 	router.Route("/web", func(r chi.Router) {
+
 		r.Post("/register", app.Cookie.Register)
 
 		r.Post("/login", app.Cookie.Login)
@@ -42,9 +43,16 @@ func (app *App) NewChiRouter(routercfg config.RouterConfig) chi.Router {
 
 		r.Post("/change-password", app.Cookie.ChangePassword)
 		r.Post("/forgot-password", app.Cookie.ForgotPassword)
+
+		r.Route("/mfa", func(r chi.Router) {
+
+			r.Post("/login", app.Cookie.LoginMfa)
+			r.Post("/password-reset", app.Cookie.PasswordReset)
+		})
 	})
 
 	router.Route("/mobile", func(r chi.Router) {
+
 		r.Post("/register", app.JWT.Register)
 
 		r.Post("/login", app.JWT.Login)
@@ -56,6 +64,11 @@ func (app *App) NewChiRouter(routercfg config.RouterConfig) chi.Router {
 
 		r.Post("/change-password", app.JWT.ChangePassword)
 		r.Post("/forgot-password", app.JWT.ForgotPassword)
+
+		r.Route("/mfa", func(r chi.Router) {
+
+			r.Post("/password-reset", app.JWT.PasswordReset)
+		})
 	})
 
 	router.Post("/code/{mfa_type}", app.Code.VerifyCode)

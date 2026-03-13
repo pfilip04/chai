@@ -17,6 +17,7 @@ type HandlerConfig struct {
 	Router RouterConfig `json:"router"`
 	Cookie CookieConfig `json:"cookie"`
 	JWT    JWTConfig    `json:"jwt"`
+	MfaExp Duration     `json:"mfa-token-expiration"`
 	Code   Duration     `json:"verification-code-queryTimeout"`
 }
 

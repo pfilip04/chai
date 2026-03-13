@@ -26,33 +26,36 @@ func NewApp(dbpool *pgxpool.Pool) *App {
 	}
 }
 
-func (a *App) InitCookie(cookiecfg config.CookieConfig, sender *mailing.Sender, mailCfg config.MailConfig) {
+func (a *App) InitCookie(cookiecfg config.CookieConfig, mfaExp config.Duration, sender *mailing.Sender, mailCfg config.MailConfig) {
 	a.Cookie = cookie.New(
 		a.DB,
 		time.Duration(cookiecfg.QueryTimeout),
 		time.Duration(cookiecfg.SessionTokenExpiration),
+		time.Duration(mfaExp),
 		time.Duration(cookiecfg.RefreshTokenExpiration),
 		sender,
 		mailCfg,
 	)
 }
 
-func (a *App) InitJWT(jwtcfg config.JWTConfig, sender *mailing.Sender, mailCfg config.MailConfig, secret string) {
+func (a *App) InitJWT(jwtcfg config.JWTConfig, mfaExp config.Duration, sender *mailing.Sender, mailCfg config.MailConfig, secret string) {
 	a.JWT = jswt.New(
 		a.DB,
 		time.Duration(jwtcfg.QueryTimeout),
 		[]byte(secret),
 		jwtcfg.SpecialName,
 		time.Duration(jwtcfg.JwtTokenExpiration),
+		time.Duration(mfaExp),
 		time.Duration(jwtcfg.RefreshTokenExpiration),
 		sender,
 		mailCfg,
 	)
 }
 
-func (a *App) InitCode(queryTimeout config.Duration) {
+func (a *App) InitCode(queryTimeout config.Duration, mfaExp config.Duration) {
 	a.Code = code.New(
 		a.DB,
 		time.Duration(queryTimeout),
+		time.Duration(mfaExp),
 	)
 }

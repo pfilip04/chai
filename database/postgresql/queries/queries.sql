@@ -54,6 +54,11 @@ WHERE refresh_token=$1 AND expires_at > NOW();
 SELECT user_id FROM sessions 
 WHERE id=$1 AND expires_at > NOW();
 
+-- name: UpdateUserPassword :execrows
+UPDATE users 
+SET password_hash=$1, updated_at=$2 
+WHERE id=$3;
+
 -- name: UpdateCookieSession :execrows
 UPDATE sessions 
 SET session_token=$1, csrf_token=$2, expires_at=$3 
@@ -88,7 +93,7 @@ SET code = EXCLUDED.code,
 RETURNING id;
 
 -- name: CheckVerificationCode :one
-SELECT code FROM mfa_mail 
+SELECT user_id, code FROM mfa_mail 
 WHERE id=$1 AND mfa_type=$2 AND expires_at > NOW();
 
 -- name: ClearMfaMail :execrows
@@ -98,3 +103,15 @@ WHERE id=$1;
 -- name: FindUserByUsernameOrEmail :one
 SELECT id, username, email FROM users 
 WHERE username=$1 OR email=$1;
+
+-- name: CreateMfaSession :exec
+INSERT INTO mfa_session (user_id, mfa_session_token, expires_at) 
+VALUES ($1, $2, $3);
+
+-- name: CheckMfaSession :one
+SELECT user_id FROM mfa_session
+WHERE mfa_session_token=$1 AND expires_at > NOW();
+
+-- name: ClearMfaSessions :execrows
+DELETE FROM mfa_session 
+WHERE user_id=$1;

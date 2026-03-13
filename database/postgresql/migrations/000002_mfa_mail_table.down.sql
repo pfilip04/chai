@@ -1,4 +1,6 @@
 DROP TABLE IF EXISTS mfa_mail;
 
+DROP TABLE IF EXISTS mfa_session;
+
 ALTER TABLE users 
 DROP COLUMN mfa;

@@ -25,6 +25,7 @@ func main() {
 	r, dbpool, err := router.NewRouter(ctx, config)
 
 	if err != nil {
+
 		log.Fatalf("Failed: %v", err)
 	}
 
@@ -43,6 +44,7 @@ func main() {
 	}
 
 	if err := server.ListenAndServe(); err != nil {
+
 		log.Fatalf("Server failed: %v", err)
 	}
 }
