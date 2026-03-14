@@ -59,7 +59,10 @@ func NewRouter(ctx context.Context, configurations string) (chi.Router, *pgxpool
 	var senderinfo *mailing.Sender
 	var mcfg config.MailConfig
 
-	name, fdomain, domain, apikey := GetEnvSenderInfo()
+	domain := os.Getenv("MAILING_DOMAIN")
+	fdomain := os.Getenv("MAILING_FULLDOMAIN")
+	name := os.Getenv("SENDER_NAME")
+	apikey := os.Getenv("API_KEY")
 
 	if cfg.MailingCfg != "" {
 
@@ -99,7 +102,7 @@ func NewRouter(ctx context.Context, configurations string) (chi.Router, *pgxpool
 	//
 	// Router init
 
-	router := app.NewChiRouter(hcfg.Router)
+	router, err := app.NewChiRouter(hcfg.Router, cfg.EnvFile)
 
 	return router, dbpool, nil
 }

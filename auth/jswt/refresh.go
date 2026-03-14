@@ -16,7 +16,7 @@ func (j *JWTAuth) Refresh(w http.ResponseWriter, r *http.Request) {
 	//
 	// Validating the Refresh Authorization Token
 
-	rf := r.Header.Get("REFRESH-TOKEN")
+	rf := r.Header.Get("Refresh-Token")
 
 	if rf == "" {
 

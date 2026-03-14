@@ -9,7 +9,7 @@ import (
 	"github.com/pfilip04/chai/config"
 )
 
-func (app *App) NewChiRouter(routercfg config.RouterConfig) chi.Router {
+func (app *App) NewChiRouter(routercfg config.RouterConfig, envFile string) (chi.Router, error) {
 
 	// Chi
 
@@ -29,6 +29,17 @@ func (app *App) NewChiRouter(routercfg config.RouterConfig) chi.Router {
 	router.Use(middleware.Timeout(time.Duration(routercfg.Timeout)))
 
 	router.Use(middleware.RequestSize(routercfg.RequestSize))
+
+	// CORS
+
+	cors, err := NewCors(envFile)
+
+	if err != nil {
+
+		return nil, err
+	}
+
+	router.Use(cors.Handler)
 
 	//
 	// Api URLs
@@ -79,5 +90,5 @@ func (app *App) NewChiRouter(routercfg config.RouterConfig) chi.Router {
 
 	router.Post("/code/{mfa_type}", app.Code.VerifyCode)
 
-	return router
+	return router, nil
 }

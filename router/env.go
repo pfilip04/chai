@@ -3,12 +3,14 @@ package router
 import (
 	"fmt"
 	"os"
+	"strings"
 
 	"github.com/joho/godotenv"
+	"github.com/pfilip04/chai/global/errs"
 )
 
 //
-// Loading the env with godotenv
+// Loading the Env with godotenv
 
 func LoadEnv(envfile string) error {
 
@@ -22,17 +24,23 @@ func LoadEnv(envfile string) error {
 }
 
 //
-// Getting the Mailing Sender info from the env function
+// Load an Env Variable into a List
 
-func GetEnvSenderInfo() (string, string, string, string) {
+func LoadEnvList(variableName string) ([]string, error) {
 
-	domain := os.Getenv("MAILING_DOMAIN")
+	origins := os.Getenv(variableName)
 
-	fulldomain := os.Getenv("MAILING_FULLDOMAIN")
+	if origins == "" {
 
-	senderName := os.Getenv("SENDER_NAME")
+		return []string{}, errs.LoadError.Err
+	}
 
-	apikey := os.Getenv("API_KEY")
+	list := strings.Split(origins, ",")
 
-	return senderName, fulldomain, domain, apikey
+	for i := range list {
+
+		list[i] = strings.TrimSpace(list[i])
+	}
+
+	return list, nil
 }
