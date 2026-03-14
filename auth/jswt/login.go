@@ -15,7 +15,7 @@ import (
 func (j *JWTAuth) Login(w http.ResponseWriter, r *http.Request) {
 
 	//
-	// Username and password check
+	// Extracting Form Values
 
 	username := r.FormValue("username")
 	password := r.FormValue("password")
@@ -24,6 +24,9 @@ func (j *JWTAuth) Login(w http.ResponseWriter, r *http.Request) {
 	defer cancelA()
 
 	repo := repository.New(j.DB)
+
+	//
+	// Username and password check
 
 	user, err := repo.GetUserByIdOrUsername(ctxA, repository.GetUserByIdOrUsernameParams{
 		Username: username,
@@ -36,6 +39,9 @@ func (j *JWTAuth) Login(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	//
+	// If Mailing was specified in the JSON check if the Email is Verified, no MFA Login for mobile (JWT)
+
 	if j.sender != nil {
 
 		if !user.EmailVerified {
@@ -44,6 +50,9 @@ func (j *JWTAuth) Login(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 	}
+
+	//
+	// Generating and Hashing Refresh Token
 
 	refreshToken, err := utils.GenerateToken(64)
 
@@ -54,6 +63,9 @@ func (j *JWTAuth) Login(w http.ResponseWriter, r *http.Request) {
 	}
 
 	hashedRefresh := utils.HashToken(refreshToken)
+
+	//
+	// Expiry time
 
 	refreshExpiresAt := time.Now().UTC().Add(j.refreshTokenExpiration)
 
@@ -71,6 +83,9 @@ func (j *JWTAuth) Login(w http.ResponseWriter, r *http.Request) {
 	defer tx.Rollback(ctxE)
 
 	repo = repository.New(tx)
+
+	//
+	// Inserting the Session into the DB
 
 	sessionID, err := repo.InsertJWTSession(ctxE, repository.InsertJWTSessionParams{
 		UserID:    user.ID,
@@ -109,6 +124,9 @@ func (j *JWTAuth) Login(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, errs.DatabaseError.Err.Error(), http.StatusInternalServerError)
 		return
 	}
+
+	//
+	// Setting the JWT Token in the Header
 
 	w.Header().Set("Content-Type", "application/json")
 	w.Header().Set("Authorization", "Bearer "+tokenString)

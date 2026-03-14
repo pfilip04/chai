@@ -8,6 +8,9 @@ import (
 	"github.com/jackc/pgx/v5/pgxpool"
 )
 
+//
+// Verifying code structs
+
 type VerificationCode struct {
 	DB                 *pgxpool.Pool
 	queryTimeout       time.Duration
@@ -25,6 +28,8 @@ type Credentials struct {
 	code    string
 	apiName string
 }
+
+// Verification code initialization
 
 func New(db *pgxpool.Pool, queryTimeout time.Duration, mfaExp time.Duration) *VerificationCode {
 	return &VerificationCode{

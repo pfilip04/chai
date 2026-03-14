@@ -12,14 +12,16 @@ import (
 )
 
 //
-// Cookie checking for authorization
+// Cookie checking for Authorization
 
-// Auth for POST/PATCH/PUT/DELETE...
+func (c *CookieAuth) Authorize(r *http.Request) (uuid.UUID, error) {
 
-func (c *CookieAuth) HardAuthorize(r *http.Request) (uuid.UUID, error) {
+	// Cookie extraction
 
 	st, err := r.Cookie("session_token")
+
 	if err != nil || st.Value == "" {
+
 		return uuid.Nil, errs.AuthError.Err
 	}
 
@@ -36,6 +38,8 @@ func (c *CookieAuth) HardAuthorize(r *http.Request) (uuid.UUID, error) {
 
 	repo := repository.New(c.DB)
 
+	// Checking Cookie Validity in the DB and comparing CSRF Tokens
+
 	sessionIdAndCsrf, err := repo.GetSessionIdAndCsrf(ctxA, hashedSessionToken)
 
 	if err != nil {
@@ -49,12 +53,17 @@ func (c *CookieAuth) HardAuthorize(r *http.Request) (uuid.UUID, error) {
 	return sessionIdAndCsrf.ID, nil
 }
 
-// Auth for Mfa
+//
+// Temporary MFA Cookie checking for MFA action Authorization
 
 func (c *CookieAuth) MfaAuthorize(r *http.Request) (uuid.UUID, error) {
 
+	// Cookie extraction
+
 	mt, err := r.Cookie("mfa_session_token")
+
 	if err != nil || mt.Value == "" {
+
 		return uuid.Nil, errs.AuthError.Err
 	}
 
@@ -64,6 +73,8 @@ func (c *CookieAuth) MfaAuthorize(r *http.Request) (uuid.UUID, error) {
 	defer cancelA()
 
 	repo := repository.New(c.DB)
+
+	// Checking Cookie Validity in the DB
 
 	userID, err := repo.CheckMfaSession(ctxA, hashedMfaToken)
 

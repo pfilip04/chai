@@ -11,6 +11,9 @@ import (
 
 func (j *JWTAuth) Delete(w http.ResponseWriter, r *http.Request) {
 
+	//
+	// Validating the User Authorization Token
+
 	userID, sessionID, err := j.Authorize(r)
 
 	if err != nil {
@@ -18,6 +21,9 @@ func (j *JWTAuth) Delete(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, errs.AuthError.Err.Error(), http.StatusUnauthorized)
 		return
 	}
+
+	//
+	// Deleting the Session alongside the User Account from the DB
 
 	ctxA, cancelA := context.WithTimeout(r.Context(), j.queryTimeout)
 	defer cancelA()
@@ -86,5 +92,6 @@ func (j *JWTAuth) Delete(w http.ResponseWriter, r *http.Request) {
 	}
 
 	w.WriteHeader(http.StatusOK)
+
 	fmt.Fprintln(w, "User account deletion successful")
 }

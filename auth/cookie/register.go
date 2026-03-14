@@ -14,6 +14,9 @@ import (
 
 func (c *CookieAuth) Register(w http.ResponseWriter, r *http.Request) {
 
+	//
+	// Extracting Form Values
+
 	username := r.FormValue("username")
 	password := r.FormValue("password")
 	email := r.FormValue("email")
@@ -53,7 +56,7 @@ func (c *CookieAuth) Register(w http.ResponseWriter, r *http.Request) {
 	}
 
 	//
-	// Password hashing and adding the user to the database
+	// Password hashing and MFA checkbox parsing
 
 	hashedPassword, err := utils.HashPassword(password)
 
@@ -71,10 +74,13 @@ func (c *CookieAuth) Register(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	repo := repository.New(c.DB)
-
 	ctxA, cancelA := context.WithTimeout(r.Context(), c.queryTimeout)
 	defer cancelA()
+
+	repo := repository.New(c.DB)
+
+	//
+	// Inserting the User into the DB
 
 	userId, err := repo.CreateUser(ctxA, repository.CreateUserParams{
 		Username:     username,
@@ -88,6 +94,9 @@ func (c *CookieAuth) Register(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, errs.DatabaseError.Err.Error(), http.StatusInternalServerError)
 		return
 	}
+
+	//
+	// If Mailing was specified in the JSON Send Mail
 
 	if c.sender != nil {
 

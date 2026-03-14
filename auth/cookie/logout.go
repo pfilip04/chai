@@ -13,9 +13,9 @@ import (
 func (c *CookieAuth) Logout(w http.ResponseWriter, r *http.Request) {
 
 	//
-	// Validating the user authorization tokens
+	// Validating the User Authorization Tokens
 
-	sessionID, err := c.HardAuthorize(r)
+	sessionID, err := c.Authorize(r)
 
 	if err != nil {
 
@@ -24,7 +24,7 @@ func (c *CookieAuth) Logout(w http.ResponseWriter, r *http.Request) {
 	}
 
 	//
-	// Clearing the session and CSRF tokens in the database
+	// Clearing the Session, CSRF and Refresh Tokens in the DB
 
 	ctxA, cancelA := context.WithTimeout(r.Context(), c.queryTimeout)
 	defer cancelA()
@@ -68,6 +68,9 @@ func (c *CookieAuth) Logout(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, errs.DatabaseError.Err.Error(), http.StatusInternalServerError)
 		return
 	}
+
+	//
+	// Clearing the Cookies
 
 	http.SetCookie(w, &http.Cookie{
 		Name:     "session_token",

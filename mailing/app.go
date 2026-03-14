@@ -10,6 +10,9 @@ import (
 	"github.com/pfilip04/chai/database/postgresql/repository"
 )
 
+//
+// Mailing structs for User, Verification, Sender
+
 type User struct {
 	UserID    uuid.UUID
 	Username  string
@@ -18,7 +21,7 @@ type User struct {
 
 type Verification struct {
 	Id      uuid.UUID
-	ApiName string
+	MfaType string
 	Code    string
 }
 
@@ -29,14 +32,23 @@ type Sender struct {
 	ApiKey     string
 }
 
+//
+// User String for Mailing Header
+
 func (u *User) ToUser() string {
 	return fmt.Sprintf("%s <%s>", u.Username, u.UserEmail)
 
 }
 
+//
+// Sender String for Mailing Footer
+
 func (s *Sender) FromSender() string {
 	return fmt.Sprintf("%s <%s>", s.SenderName, s.Fulldomain)
 }
+
+//
+// Sender initialization
 
 func NewSender(name string, fdomain string, domain string, apikey string) *Sender {
 	return &Sender{
@@ -45,11 +57,18 @@ func NewSender(name string, fdomain string, domain string, apikey string) *Sende
 		Domain:     domain,
 		ApiKey:     apikey,
 	}
+
 }
+
+//
+// Link to Page for Code entering
 
 func ToLink(name string, fulldomain string, id uuid.UUID) string {
 	return fmt.Sprintf("%s/code/%s?id=%s", fulldomain, name, id.String())
 }
+
+//
+// Helper structs for Mail Sending
 
 type DbQuerying struct {
 	Repo         *repository.Queries

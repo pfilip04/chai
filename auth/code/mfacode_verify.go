@@ -9,6 +9,8 @@ import (
 	"github.com/pfilip04/chai/utils"
 )
 
+// Credential checking
+
 func MfaVerify(db DbQuery, info Credentials) (uuid.UUID, bool, error) {
 
 	ctxA, cancelA := context.WithTimeout(db.ctx, db.queryTimeout)
@@ -25,6 +27,8 @@ func MfaVerify(db DbQuery, info Credentials) (uuid.UUID, bool, error) {
 
 	repo := repository.New(tx)
 
+	// Check the Credentials
+
 	UserAndCode, err := repo.CheckVerificationCode(ctxA, repository.CheckVerificationCodeParams{
 		ID:      info.mfaId,
 		MfaType: info.apiName,
@@ -37,17 +41,14 @@ func MfaVerify(db DbQuery, info Credentials) (uuid.UUID, bool, error) {
 
 	if !utils.CheckToken(info.code, UserAndCode.Code) {
 
-		return uuid.Nil, false, nil
+		return uuid.Nil, false, errs.AuthError.Err
 	}
+
+	// Clear all User Codes (if there are multiple but that shouldn't be)
 
 	rows, err := repo.ClearMfaMail(ctxA, info.mfaId)
 
-	if err != nil {
-
-		return uuid.Nil, false, errs.DatabaseError.Err
-	}
-
-	if rows == 0 {
+	if err != nil || rows == 0 {
 
 		return uuid.Nil, false, errs.DatabaseError.Err
 	}

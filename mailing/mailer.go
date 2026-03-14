@@ -12,18 +12,25 @@ import (
 	"github.com/pfilip04/chai/mailing/components"
 )
 
+//
 // Mailgun - 100 emais per day on a free plan
 
 func Mail(ctx context.Context, mailCfg config.MailConfig, sender Sender, verify Verification, user User) error {
 
 	if sender.ApiKey == "" {
-		return fmt.Errorf("Apikey empty")
+
+		return fmt.Errorf("Apikey Empty!")
 	}
+
+	//
+	// Mailgun
 
 	mg := mailgun.NewMailgun(sender.Domain, sender.ApiKey)
 
-	//When you have an EU-domain, you must specify the endpoint:
+	// When you have an EU-domain, you must specify the endpoint:
 	// mg.SetAPIBase("https://api.eu.mailgun.net")
+
+	// Mailgun message
 
 	m := mailgun.NewMessage(sender.FromSender(), // IT NEEDS TO BE IN THIS FORM == "Name <email>"
 		"VERIFICATION CODE",
@@ -31,22 +38,32 @@ func Mail(ctx context.Context, mailCfg config.MailConfig, sender Sender, verify 
 		user.ToUser(), // IT NEEDS TO BE IN THIS FORM == "username <user-email>"
 	)
 
-	link := ToLink(verify.ApiName, sender.Fulldomain, verify.Id)
+	// Link Creation
 
-	htmlf, _, err := HtmlFCase(verify.ApiName, mailCfg)
+	link := ToLink(verify.MfaType, sender.Fulldomain, verify.Id)
+
+	// Choosing the Html file for mfa_type case
+
+	htmlf, _, err := HtmlFCase(verify.MfaType, mailCfg)
 
 	if err != nil {
 
 		return fmt.Errorf("Function call failed: %v", err)
 	}
 
+	// Mail String content Setting
+
 	htmlContent, err := components.MailHtml(user.Username, verify.Code, link, htmlf)
 
 	if err != nil {
+
 		return fmt.Errorf("HTML component failed: %v", err)
 	}
 
 	m.SetHTML(htmlContent)
+
+	//
+	// Sending the Mail
 
 	ctxA, cancelA := context.WithTimeout(ctx, time.Duration(mailCfg.MailTimeout))
 	defer cancelA()
@@ -61,6 +78,9 @@ func Mail(ctx context.Context, mailCfg config.MailConfig, sender Sender, verify 
 
 	return nil
 }
+
+//
+// Html File name chhosing based on mfa_type
 
 func HtmlFCase(name string, mailCfg config.MailConfig) (string, time.Duration, error) {
 

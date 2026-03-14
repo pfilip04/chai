@@ -12,6 +12,9 @@ import (
 
 func (c *CookieAuth) PasswordReset(w http.ResponseWriter, r *http.Request) {
 
+	//
+	// Validating the MFA Authorization Token
+
 	userId, err := c.MfaAuthorize(r)
 
 	if err != nil {
@@ -20,8 +23,14 @@ func (c *CookieAuth) PasswordReset(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	//
+	// Extracting Form Values
+
 	newPassword := r.FormValue("new_password")
 	newPasswordRepeat := r.FormValue("new_password_repeat")
+
+	//
+	// Password checking and Hashing
 
 	if newPassword != newPasswordRepeat || !utils.IsValidPassword(newPassword) {
 
@@ -52,7 +61,14 @@ func (c *CookieAuth) PasswordReset(w http.ResponseWriter, r *http.Request) {
 
 	repo := repository.New(tx)
 
-	rows, err := repo.ClearMfaMail(ctxA, userId)
+	//
+	// Updating User Password
+
+	rows, err := repo.UpdateUserPassword(ctxA, repository.UpdateUserPasswordParams{
+		PasswordHash: hashedNewPassword,
+		UpdatedAt:    time.Now().UTC(),
+		ID:           userId,
+	})
 
 	if err != nil || rows == 0 {
 
@@ -60,11 +76,10 @@ func (c *CookieAuth) PasswordReset(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	rows, err = repo.UpdateUserPassword(ctxA, repository.UpdateUserPasswordParams{
-		PasswordHash: hashedNewPassword,
-		UpdatedAt:    time.Now().UTC(),
-		ID:           userId,
-	})
+	//
+	// Clearing the MFA Token in the DB
+
+	rows, err = repo.ClearMfaSessions(ctxA, userId)
 
 	if err != nil || rows == 0 {
 
@@ -77,6 +92,9 @@ func (c *CookieAuth) PasswordReset(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, errs.DatabaseError.Err.Error(), errs.DatabaseError.Status)
 		return
 	}
+
+	//
+	// Clearing the MFA Cookie
 
 	http.SetCookie(w, &http.Cookie{
 		Name:     "mfa_session_token",

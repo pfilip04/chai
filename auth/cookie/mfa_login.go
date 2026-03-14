@@ -12,6 +12,9 @@ import (
 
 func (c *CookieAuth) LoginMfa(w http.ResponseWriter, r *http.Request) {
 
+	//
+	// Validating the MFA Authorization Token
+
 	userId, err := c.MfaAuthorize(r)
 
 	if err != nil {
@@ -20,31 +23,8 @@ func (c *CookieAuth) LoginMfa(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	ctxA, cancelA := context.WithTimeout(r.Context(), c.queryTimeout)
-	defer cancelA()
-
-	tx, err := c.DB.Begin(ctxA)
-
-	if err != nil {
-
-		http.Error(w, errs.DatabaseError.Err.Error(), errs.DatabaseError.Status)
-		return
-	}
-
-	defer tx.Rollback(ctxA)
-
-	repo := repository.New(tx)
-
-	rows, err := repo.ClearMfaMail(ctxA, userId)
-
-	if err != nil || rows == 0 {
-
-		http.Error(w, errs.DatabaseError.Err.Error(), errs.DatabaseError.Status)
-		return
-	}
-
 	//
-	// Generating and assigning session to the user
+	// Generating and Hashing Session, CSRF and Refresh Tokens
 
 	sessionToken, err := utils.GenerateToken(32)
 
@@ -74,8 +54,29 @@ func (c *CookieAuth) LoginMfa(w http.ResponseWriter, r *http.Request) {
 	hashedCsrfToken := utils.HashToken(csrfToken)
 	hashedRefresh := utils.HashToken(refreshToken)
 
+	//
+	// Expiry times
+
 	sessionExpiresAt := time.Now().UTC().Add(c.sessionTokenExpiration)
 	refreshExpiresAt := time.Now().UTC().Add(c.refreshTokenExpiration)
+
+	ctxA, cancelA := context.WithTimeout(r.Context(), c.queryTimeout)
+	defer cancelA()
+
+	tx, err := c.DB.Begin(ctxA)
+
+	if err != nil {
+
+		http.Error(w, errs.DatabaseError.Err.Error(), errs.DatabaseError.Status)
+		return
+	}
+
+	defer tx.Rollback(ctxA)
+
+	repo := repository.New(tx)
+
+	//
+	// Inserting the Session into the DB
 
 	sessionID, err := repo.InsertCookieSession(ctxA, repository.InsertCookieSessionParams{
 		UserID:       userId,
@@ -103,11 +104,31 @@ func (c *CookieAuth) LoginMfa(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	//
+	// Clearing the MFA Token in the DB
+
+	rows, err := repo.ClearMfaSessions(ctxA, userId)
+
+	if err != nil {
+
+		http.Error(w, errs.DatabaseError.Err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	if rows == 0 {
+
+		http.Error(w, errs.DatabaseError.Err.Error(), http.StatusInternalServerError)
+		return
+	}
+
 	if err := tx.Commit(ctxA); err != nil {
 
 		http.Error(w, errs.DatabaseError.Err.Error(), errs.DatabaseError.Status)
 		return
 	}
+
+	//
+	// Clearing the MFA Cookie
 
 	http.SetCookie(w, &http.Cookie{
 		Name:     "mfa_session_token",
@@ -118,6 +139,9 @@ func (c *CookieAuth) LoginMfa(w http.ResponseWriter, r *http.Request) {
 		SameSite: http.SameSiteStrictMode,
 		Path:     "/",
 	})
+
+	//
+	// Setting the Cookies
 
 	http.SetCookie(w, &http.Cookie{
 		Name:     "session_token",

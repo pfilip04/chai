@@ -11,7 +11,12 @@ import (
 	"github.com/pfilip04/chai/utils"
 )
 
+//
+// JWT checking for Authorization
+
 func (j *JWTAuth) Authorize(r *http.Request) (uuid.UUID, uuid.UUID, error) {
+
+	// JWT extraction
 
 	authHeader := r.Header.Get("Authorization")
 
@@ -22,36 +27,33 @@ func (j *JWTAuth) Authorize(r *http.Request) (uuid.UUID, uuid.UUID, error) {
 
 	token := strings.TrimPrefix(authHeader, "Bearer ")
 
+	// JWT Claims checking
+
 	userID, sessionID, err := utils.CheckJWT(token, j.secret, j.issuer)
 
 	if err != nil {
 
-		return uuid.Nil, uuid.Nil, errs.AuthError.Err
+		return uuid.Nil, uuid.Nil, err
 	}
 
-	return userID, sessionID, nil
-}
-
-func (j *JWTAuth) MfaAuthorize(r *http.Request) (uuid.UUID, error) {
-
-	mt, err := r.Cookie("mfa_session_token")
-	if err != nil || mt.Value == "" {
-		return uuid.Nil, errs.AuthError.Err
-	}
-
-	hashedMfaToken := utils.HashToken(mt.Value)
+	// DB Session checking
 
 	ctxA, cancelA := context.WithTimeout(r.Context(), j.queryTimeout)
 	defer cancelA()
 
 	repo := repository.New(j.DB)
 
-	userID, err := repo.CheckMfaSession(ctxA, hashedMfaToken)
+	dbUserId, err := repo.GetUserIdBySessionId(ctxA, sessionID)
 
 	if err != nil {
 
-		return uuid.Nil, errs.AuthError.Err
+		return uuid.Nil, uuid.Nil, err
 	}
 
-	return userID, nil
+	if userID != dbUserId {
+
+		return uuid.Nil, uuid.Nil, errs.AuthError.Err
+	}
+
+	return userID, sessionID, nil
 }

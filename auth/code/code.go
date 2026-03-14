@@ -15,7 +15,9 @@ import (
 
 func (vc *VerificationCode) VerifyCode(w http.ResponseWriter, r *http.Request) {
 
-	code := r.FormValue("6-DIGIT-CODE")
+	// Pulling data from the form and the link
+
+	code := r.FormValue("code")
 
 	mfaType := chi.URLParam(r, "mfa_type")
 
@@ -26,6 +28,8 @@ func (vc *VerificationCode) VerifyCode(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "Couldn't get link id", http.StatusBadRequest)
 		return
 	}
+
+	// Calling the func to verify Crdentials
 
 	userId, verified, err := MfaVerify(DbQuery{
 		Db:           vc.DB,
@@ -49,6 +53,8 @@ func (vc *VerificationCode) VerifyCode(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	// Creating a temporary MFA TOKEN for authorization of the next mfa_action
+
 	mfaSessionToken, err := utils.GenerateToken(64)
 
 	if err != nil {
@@ -65,6 +71,8 @@ func (vc *VerificationCode) VerifyCode(w http.ResponseWriter, r *http.Request) {
 
 	repo := repository.New(vc.DB)
 
+	// Inserting the Token into the DB
+
 	err = repo.CreateMfaSession(ctxA, repository.CreateMfaSessionParams{
 		UserID:          userId,
 		MfaSessionToken: hashedMfaToken,
@@ -76,6 +84,8 @@ func (vc *VerificationCode) VerifyCode(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, errs.DatabaseError.Err.Error(), errs.DatabaseError.Status)
 		return
 	}
+
+	// Setting the token in the browser
 
 	http.SetCookie(w, &http.Cookie{
 		Name:     "mfa_session_token",

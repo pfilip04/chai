@@ -13,6 +13,9 @@ import (
 
 func (j *JWTAuth) ForgotPassword(w http.ResponseWriter, r *http.Request) {
 
+	//
+	// Finding the User in the DB
+
 	usernameOrEmail := r.FormValue("username_or_email")
 
 	ctxA, cancelA := context.WithTimeout(r.Context(), j.queryTimeout)
@@ -27,6 +30,9 @@ func (j *JWTAuth) ForgotPassword(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, errs.DatabaseError.Err.Error(), http.StatusBadRequest)
 		return
 	}
+
+	//
+	// If Mailing wasn't specified in the JSON then the endpoint can't be used, otherwise Send Mail
 
 	if j.sender == nil {
 

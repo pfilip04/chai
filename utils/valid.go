@@ -7,7 +7,7 @@ import (
 )
 
 //
-//Username feng-shui
+// Username feng-shui
 
 func IsValidUsername(username string) bool {
 
@@ -39,7 +39,7 @@ func IsValidUsername(username string) bool {
 }
 
 //
-//Password feng-shui
+// Password feng-shui
 
 func IsValidPassword(password string) bool {
 
@@ -68,7 +68,7 @@ func IsValidPassword(password string) bool {
 }
 
 //
-//Email check
+// Email check
 
 func IsValidEmail(email string) bool {
 
@@ -79,6 +79,9 @@ func IsValidEmail(email string) bool {
 
 	return true
 }
+
+//
+// String to Boolean function (only strings "true" and "false" with various casing - Case insensitive)
 
 func ToBool(p string) (bool, error) {
 

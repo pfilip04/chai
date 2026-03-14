@@ -14,15 +14,15 @@ Authentication API written in Go using Chi for a PostgreSQL database.
 But watch out for:
 
 - Postgres version
+- Mailing option: it hasnt been tested yet
 - Every, even subtle changes can crash the DB
-- Check what is passed through as cookies vs what needs to be manually added to headers
-- Some errors are frontend-oriented; it doesn't mean something went wrong, just that something needs to be sorted before full implementation
+- Check what is passed through as Cookies vs what needs to be manually added to Headers
+- Some Errors are Frontend - oriented; it doesn't mean something went wrong, just that something needs to be sorted before full implementation
 
 > Tip: Pay close attention to database setup and headers to avoid unexpected issues.
 
 ## Future improvements
 
-- Email verification (in progress...)
 - Adding Redis
 - Rate limiting and IP checking, CORS
 

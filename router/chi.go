@@ -11,6 +11,8 @@ import (
 
 func (app *App) NewChiRouter(routercfg config.RouterConfig) chi.Router {
 
+	// Chi
+
 	router := chi.NewRouter()
 
 	// A good base middleware stack
@@ -28,7 +30,10 @@ func (app *App) NewChiRouter(routercfg config.RouterConfig) chi.Router {
 
 	router.Use(middleware.RequestSize(routercfg.RequestSize))
 
+	//
 	// Api URLs
+
+	// Web Apis
 
 	router.Route("/web", func(r chi.Router) {
 
@@ -44,12 +49,16 @@ func (app *App) NewChiRouter(routercfg config.RouterConfig) chi.Router {
 		r.Post("/change-password", app.Cookie.ChangePassword)
 		r.Post("/forgot-password", app.Cookie.ForgotPassword)
 
+		// Mfa Apis
+
 		r.Route("/mfa", func(r chi.Router) {
 
 			r.Post("/login", app.Cookie.LoginMfa)
 			r.Post("/password-reset", app.Cookie.PasswordReset)
 		})
 	})
+
+	// Mobile Apis
 
 	router.Route("/mobile", func(r chi.Router) {
 
@@ -64,12 +73,9 @@ func (app *App) NewChiRouter(routercfg config.RouterConfig) chi.Router {
 
 		r.Post("/change-password", app.JWT.ChangePassword)
 		r.Post("/forgot-password", app.JWT.ForgotPassword)
-
-		r.Route("/mfa", func(r chi.Router) {
-
-			r.Post("/password-reset", app.JWT.PasswordReset)
-		})
 	})
+
+	// Code Api
 
 	router.Post("/code/{mfa_type}", app.Code.VerifyCode)
 

@@ -13,7 +13,7 @@ import (
 )
 
 //
-// Hashing function
+// Hashing function implemented on password
 
 func HashPassword(password string) (string, error) {
 
@@ -44,7 +44,7 @@ func GenerateToken(length int) (string, error) {
 }
 
 //
-// Token hashing
+// Token hashing with SHA256
 
 func HashToken(token string) string {
 
@@ -57,6 +57,9 @@ func CheckToken(token string, hash string) bool {
 	hashedToken := HashToken(token)
 	return subtle.ConstantTimeCompare([]byte(hashedToken), []byte(hash)) == 1
 }
+
+//
+// OTP code generation
 
 func GenerateOTP(numberSystem int64, complexity int) (string, error) {
 

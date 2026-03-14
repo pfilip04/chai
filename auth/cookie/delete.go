@@ -13,18 +13,15 @@ import (
 func (c *CookieAuth) Delete(w http.ResponseWriter, r *http.Request) {
 
 	//
-	// Validating the user authorization tokens
+	// Validating the User Authorization Tokens
 
-	sessionID, err := c.HardAuthorize(r)
+	sessionID, err := c.Authorize(r)
 
 	if err != nil {
 
 		http.Error(w, errs.AuthError.Err.Error(), http.StatusUnauthorized)
 		return
 	}
-
-	//
-	// Deleting the account from the database based on the sessionID
 
 	ctxA, cancelA := context.WithTimeout(r.Context(), c.queryTimeout)
 	defer cancelA()
@@ -40,6 +37,9 @@ func (c *CookieAuth) Delete(w http.ResponseWriter, r *http.Request) {
 	defer tx.Rollback(ctxA)
 
 	repo := repository.New(tx)
+
+	//
+	// Deleting the Session, CSRF and Refresh Tokens alongside the User Account from the DB
 
 	rows, err := repo.DeleteRefreshToken(ctxA, sessionID)
 
@@ -84,7 +84,7 @@ func (c *CookieAuth) Delete(w http.ResponseWriter, r *http.Request) {
 	}
 
 	//
-	// Clearing the cookies
+	// Clearing the Cookies
 
 	http.SetCookie(w, &http.Cookie{
 		Name:     "session_token",

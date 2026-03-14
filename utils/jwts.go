@@ -8,10 +8,16 @@ import (
 	"github.com/google/uuid"
 )
 
+//
+// Claims for JWT
+
 type CustomClaims struct {
 	SessionID string `json:"sid"`
 	jwt.RegisteredClaims
 }
+
+//
+// Create JWT Token with Claims
 
 func CreateJWT(secret []byte, userID uuid.UUID, sessionID uuid.UUID, issuer string, expiration time.Duration) (string, error) {
 
@@ -32,6 +38,9 @@ func CreateJWT(secret []byte, userID uuid.UUID, sessionID uuid.UUID, issuer stri
 
 	return token.SignedString(secret)
 }
+
+//
+// Check JWT Token Claims
 
 func CheckJWT(tokenString string, secret []byte, issuer string) (uuid.UUID, uuid.UUID, error) {
 

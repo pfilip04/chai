@@ -7,6 +7,9 @@ import (
 	"github.com/joho/godotenv"
 )
 
+//
+// Loading the env with godotenv
+
 func LoadEnv(envfile string) error {
 
 	err := godotenv.Load(envfile)
@@ -17,6 +20,9 @@ func LoadEnv(envfile string) error {
 
 	return nil
 }
+
+//
+// Getting the Mailing Sender info from the env function
 
 func GetEnvSenderInfo() (string, string, string, string) {
 

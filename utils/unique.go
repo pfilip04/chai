@@ -9,6 +9,9 @@ import (
 	"github.com/pfilip04/chai/database/postgresql/repository"
 )
 
+//
+// Checking if the username exists in the database - if not, it is available therefore it returns true otherwise false
+
 func CheckUniqueUsername(r *http.Request, username string, db *pgxpool.Pool, timeout time.Duration) bool {
 
 	ctxA, cancelA := context.WithTimeout(r.Context(), timeout)
@@ -25,6 +28,9 @@ func CheckUniqueUsername(r *http.Request, username string, db *pgxpool.Pool, tim
 
 	return count == 0
 }
+
+//
+// Checking if the email exists in the database - if not, it is available therefore it returns true otherwise false
 
 func CheckUniqueEmail(r *http.Request, email string, db *pgxpool.Pool, timeout time.Duration) bool {
 

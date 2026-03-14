@@ -11,6 +11,9 @@ import (
 
 func (j *JWTAuth) Logout(w http.ResponseWriter, r *http.Request) {
 
+	//
+	// Validating the User Authorization Token
+
 	userID, sessionID, err := j.Authorize(r)
 
 	if err != nil {
@@ -18,6 +21,9 @@ func (j *JWTAuth) Logout(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, errs.AuthError.Err.Error(), http.StatusUnauthorized)
 		return
 	}
+
+	//
+	// Clearing the Session, CSRF and Refresh Tokens in the DB
 
 	ctxA, cancelA := context.WithTimeout(r.Context(), j.queryTimeout)
 	defer cancelA()
@@ -36,15 +42,9 @@ func (j *JWTAuth) Logout(w http.ResponseWriter, r *http.Request) {
 
 	rows, err := repo.DeleteRefreshToken(ctxA, sessionID)
 
-	if err != nil {
+	if err != nil || rows == 0 {
 
-		http.Error(w, errs.DatabaseError.Err.Error(), http.StatusInternalServerError)
-		return
-	}
-
-	if rows == 0 {
-
-		http.Error(w, "No refresh token found/expired", http.StatusUnauthorized)
+		http.Error(w, errs.DatabaseError.Err.Error(), errs.DatabaseError.Status)
 		return
 	}
 
@@ -53,15 +53,9 @@ func (j *JWTAuth) Logout(w http.ResponseWriter, r *http.Request) {
 		UserID: userID,
 	})
 
-	if err != nil {
+	if err != nil || rows == 0 {
 
-		http.Error(w, errs.DatabaseError.Err.Error(), http.StatusInternalServerError)
-		return
-	}
-
-	if rows == 0 {
-
-		http.Error(w, "No session found/expired", http.StatusUnauthorized)
+		http.Error(w, errs.DatabaseError.Err.Error(), errs.DatabaseError.Status)
 		return
 	}
 

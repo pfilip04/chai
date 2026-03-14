@@ -14,7 +14,10 @@ import (
 
 func (c *CookieAuth) ChangePassword(w http.ResponseWriter, r *http.Request) {
 
-	sessionID, err := c.HardAuthorize(r)
+	//
+	// Validating the User Authorization Tokens
+
+	sessionID, err := c.Authorize(r)
 
 	if err != nil {
 
@@ -22,12 +25,13 @@ func (c *CookieAuth) ChangePassword(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	password := r.FormValue("old-password")
-
 	ctxA, cancelA := context.WithTimeout(r.Context(), c.queryTimeout)
 	defer cancelA()
 
 	repo := repository.New(c.DB)
+
+	//
+	// Finding the User in the DB
 
 	userID, err := repo.GetUserIdBySessionId(ctxA, sessionID)
 
@@ -51,11 +55,19 @@ func (c *CookieAuth) ChangePassword(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	//
+	// Password Confirmation to procede
+
+	password := r.FormValue("old-password")
+
 	if !utils.CheckPasswordHash(password, user.PasswordHash) {
 
 		http.Error(w, errs.AuthError.Err.Error(), http.StatusUnauthorized)
 		return
 	}
+
+	//
+	// If Mailing was specified in the JSON and if the User opted for MFA then Send Mail
 
 	if c.sender != nil && user.Mfa {
 

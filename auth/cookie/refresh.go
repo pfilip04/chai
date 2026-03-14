@@ -13,6 +13,9 @@ import (
 
 func (c *CookieAuth) Refresh(w http.ResponseWriter, r *http.Request) {
 
+	//
+	// Validating the Refresh Authorization Token
+
 	rf, err := r.Cookie("refresh_token")
 
 	if err != nil || rf.Value == "" {
@@ -22,9 +25,6 @@ func (c *CookieAuth) Refresh(w http.ResponseWriter, r *http.Request) {
 	}
 
 	hashedRefreshToken := utils.HashToken(rf.Value)
-
-	sessionExpiresAt := time.Now().UTC().Add(c.sessionTokenExpiration)
-	refreshExpiresAt := time.Now().UTC().Add(c.refreshTokenExpiration)
 
 	ctxA, cancelA := context.WithTimeout(r.Context(), c.queryTimeout)
 	defer cancelA()
@@ -38,6 +38,9 @@ func (c *CookieAuth) Refresh(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "Couldn't find refresh", http.StatusUnauthorized)
 		return
 	}
+
+	//
+	// Generating and Hashing Session, CSRF and Refresh Tokens
 
 	sessionToken, err := utils.GenerateToken(32)
 
@@ -67,6 +70,12 @@ func (c *CookieAuth) Refresh(w http.ResponseWriter, r *http.Request) {
 	hashedCsrfToken := utils.HashToken(csrfToken)
 	hashedNewRefresh := utils.HashToken(newRefreshToken)
 
+	//
+	// Expiry times
+
+	sessionExpiresAt := time.Now().UTC().Add(c.sessionTokenExpiration)
+	refreshExpiresAt := time.Now().UTC().Add(c.refreshTokenExpiration)
+
 	ctxB, cancelB := context.WithTimeout(r.Context(), c.queryTimeout)
 	defer cancelB()
 
@@ -81,6 +90,9 @@ func (c *CookieAuth) Refresh(w http.ResponseWriter, r *http.Request) {
 	defer tx.Rollback(ctxB)
 
 	repo = repository.New(tx)
+
+	//
+	// Updating the Session into the DB
 
 	rows, err := repo.UpdateCookieSession(ctxB, repository.UpdateCookieSessionParams{
 		SessionToken: hashedSessionToken,
@@ -123,6 +135,9 @@ func (c *CookieAuth) Refresh(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, errs.DatabaseError.Err.Error(), http.StatusInternalServerError)
 		return
 	}
+
+	//
+	// Setting the Cookies
 
 	http.SetCookie(w, &http.Cookie{
 		Name:     "session_token",

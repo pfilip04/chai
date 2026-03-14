@@ -13,7 +13,11 @@ import (
 
 func (j *JWTAuth) Refresh(w http.ResponseWriter, r *http.Request) {
 
+	//
+	// Validating the Refresh Authorization Token
+
 	rf := r.Header.Get("REFRESH-TOKEN")
+
 	if rf == "" {
 
 		http.Error(w, errs.AuthError.Err.Error(), http.StatusUnauthorized)
@@ -21,8 +25,6 @@ func (j *JWTAuth) Refresh(w http.ResponseWriter, r *http.Request) {
 	}
 
 	hashedRefreshToken := utils.HashToken(rf)
-
-	refreshExpiresAt := time.Now().UTC().Add(j.refreshTokenExpiration)
 
 	ctxA, cancelA := context.WithTimeout(r.Context(), j.queryTimeout)
 	defer cancelA()
@@ -40,6 +42,9 @@ func (j *JWTAuth) Refresh(w http.ResponseWriter, r *http.Request) {
 	ctxB, cancelB := context.WithTimeout(r.Context(), j.queryTimeout)
 	defer cancelB()
 
+	//
+	// Getting User ID with Session ID to generate the JWT
+
 	userID, err := repo.GetUserIdBySessionId(ctxB, sessionID)
 
 	if err != nil {
@@ -47,6 +52,9 @@ func (j *JWTAuth) Refresh(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "Couldn't find userID", http.StatusUnauthorized)
 		return
 	}
+
+	//
+	// Generating the JWT and Refresh Token, Hashing the Refresh Token
 
 	tokenString, err := utils.CreateJWT(j.secret, userID, sessionID, j.issuer, j.jwtTokenExpiration)
 
@@ -66,6 +74,11 @@ func (j *JWTAuth) Refresh(w http.ResponseWriter, r *http.Request) {
 
 	hashedNewRefresh := utils.HashToken(newRefreshToken)
 
+	//
+	// Expiry time
+
+	refreshExpiresAt := time.Now().UTC().Add(j.refreshTokenExpiration)
+
 	ctxC, cancelC := context.WithTimeout(r.Context(), j.queryTimeout)
 	defer cancelC()
 
@@ -80,6 +93,9 @@ func (j *JWTAuth) Refresh(w http.ResponseWriter, r *http.Request) {
 	defer tx.Rollback(ctxC)
 
 	repo = repository.New(tx)
+
+	//
+	// Updating the Session into the DB
 
 	rows, err := repo.UpdateJWTSession(ctxC, repository.UpdateJWTSessionParams{
 		ExpiresAt: refreshExpiresAt,

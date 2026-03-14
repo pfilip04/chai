@@ -12,6 +12,9 @@ import (
 	"github.com/pfilip04/chai/mailing"
 )
 
+//
+// App struct
+
 type App struct {
 	DB     *pgxpool.Pool
 	Cookie *cookie.CookieAuth
@@ -19,12 +22,16 @@ type App struct {
 	Code   *code.VerificationCode
 }
 
+// App initialization
+
 func NewApp(dbpool *pgxpool.Pool) *App {
 
 	return &App{
 		DB: dbpool,
 	}
 }
+
+// Cookie initialization
 
 func (a *App) InitCookie(cookiecfg config.CookieConfig, mfaExp config.Duration, sender *mailing.Sender, mailCfg config.MailConfig) {
 	a.Cookie = cookie.New(
@@ -37,6 +44,8 @@ func (a *App) InitCookie(cookiecfg config.CookieConfig, mfaExp config.Duration, 
 		mailCfg,
 	)
 }
+
+// Jwt initialization
 
 func (a *App) InitJWT(jwtcfg config.JWTConfig, mfaExp config.Duration, sender *mailing.Sender, mailCfg config.MailConfig, secret string) {
 	a.JWT = jswt.New(
@@ -51,6 +60,8 @@ func (a *App) InitJWT(jwtcfg config.JWTConfig, mfaExp config.Duration, sender *m
 		mailCfg,
 	)
 }
+
+// Code initialization
 
 func (a *App) InitCode(queryTimeout config.Duration, mfaExp config.Duration) {
 	a.Code = code.New(

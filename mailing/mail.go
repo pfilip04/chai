@@ -10,7 +10,13 @@ import (
 	"github.com/pfilip04/chai/utils"
 )
 
+//
+// Complete Mail Sending with Code generation and DB writing
+
 func SendMail(db DbQuerying, mailc Mailc, user User, mfat MfaType, s *Sender) (string, error) {
+
+	//
+	// Code generation and hashing, inserting it into the DB
 
 	code, err := utils.GenerateOTP(10, 6)
 
@@ -38,12 +44,15 @@ func SendMail(db DbQuerying, mailc Mailc, user User, mfat MfaType, s *Sender) (s
 		return errs.ServerError.Err.Error(), errs.ServerError.Err
 	}
 
+	//
+	// Mail Sending Call
+
 	ctxC, cancelC := context.WithTimeout(db.Ctx, db.QueryTimeout)
 	defer cancelC()
 
 	err = Mail(ctxC, mailc.MailCfg, *s, Verification{
 		Id:      mfaId,
-		ApiName: mfat.ApiName,
+		MfaType: mfat.ApiName,
 		Code:    code,
 	}, User{
 		Username:  user.Username,

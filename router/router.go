@@ -10,6 +10,7 @@ import (
 	"github.com/jackc/pgx/v5/pgxpool"
 
 	"github.com/pfilip04/chai/config"
+	"github.com/pfilip04/chai/global/errs"
 	"github.com/pfilip04/chai/mailing"
 )
 
@@ -21,14 +22,16 @@ func NewRouter(ctx context.Context, configurations string) (chi.Router, *pgxpool
 	cfg, err := config.Load[config.Config](configurations)
 
 	if err != nil {
-		return nil, nil, err
+
+		return nil, nil, errs.LoadError.Err
 	}
 
 	//
 	// Load env
 
 	if err := LoadEnv(cfg.EnvFile); err != nil {
-		return nil, nil, err
+
+		return nil, nil, errs.LoadError.Err
 	}
 
 	//
@@ -37,17 +40,19 @@ func NewRouter(ctx context.Context, configurations string) (chi.Router, *pgxpool
 	dbpool, err := ConnectDB(ctx, "DATABASE_URL")
 
 	if err != nil {
+
 		return nil, nil, err
 	}
 
 	log.Println("Database ok")
 
 	//
-	// App init
+	// Loading the variables from the env
 
 	secret := os.Getenv("SECRET_KEY")
 
 	if secret == "" {
+
 		return nil, nil, errors.New("SECRET_KEY IS NOT SET")
 	}
 
@@ -57,15 +62,18 @@ func NewRouter(ctx context.Context, configurations string) (chi.Router, *pgxpool
 	name, fdomain, domain, apikey := GetEnvSenderInfo()
 
 	if cfg.MailingCfg != "" {
+
 		senderinfo = mailing.NewSender(name, fdomain, domain, apikey)
 
 		mcfg, err = config.Load[config.MailConfig](cfg.MailingCfg)
 
 		if err != nil {
-			return nil, nil, err
+
+			return nil, nil, errs.LoadError.Err
 		}
 
 	} else {
+
 		senderinfo = nil
 		mcfg = config.MailConfig{}
 	}
@@ -73,8 +81,12 @@ func NewRouter(ctx context.Context, configurations string) (chi.Router, *pgxpool
 	hcfg, err := config.Load[config.HandlerConfig](cfg.HandlerCfg)
 
 	if err != nil {
-		return nil, nil, err
+
+		return nil, nil, errs.LoadError.Err
 	}
+
+	//
+	// App init
 
 	app := NewApp(dbpool)
 

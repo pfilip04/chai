@@ -17,7 +17,7 @@ import (
 func (c *CookieAuth) Login(w http.ResponseWriter, r *http.Request) {
 
 	//
-	// Username and password check
+	// Extracting Form Values
 
 	username := r.FormValue("username")
 	password := r.FormValue("password")
@@ -26,6 +26,9 @@ func (c *CookieAuth) Login(w http.ResponseWriter, r *http.Request) {
 	defer cancelA()
 
 	repo := repository.New(c.DB)
+
+	//
+	// Username and password check
 
 	user, err := repo.GetUserByIdOrUsername(ctxA, repository.GetUserByIdOrUsernameParams{
 		Username: username,
@@ -37,6 +40,9 @@ func (c *CookieAuth) Login(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "Invalid username or password", http.StatusUnauthorized)
 		return
 	}
+
+	//
+	// If Mailing was specified in the JSON check if the Email is Verified and if the User opted for MFA then Send Mail
 
 	if c.sender != nil {
 
@@ -76,7 +82,7 @@ func (c *CookieAuth) Login(w http.ResponseWriter, r *http.Request) {
 	}
 
 	//
-	// Generating and assigning session to the user
+	// Generating and Hashing Session, CSRF and Refresh Tokens
 
 	sessionToken, err := utils.GenerateToken(32)
 
@@ -106,6 +112,9 @@ func (c *CookieAuth) Login(w http.ResponseWriter, r *http.Request) {
 	hashedCsrfToken := utils.HashToken(csrfToken)
 	hashedRefresh := utils.HashToken(refreshToken)
 
+	//
+	// Expiry times
+
 	sessionExpiresAt := time.Now().UTC().Add(c.sessionTokenExpiration)
 	refreshExpiresAt := time.Now().UTC().Add(c.refreshTokenExpiration)
 
@@ -123,6 +132,9 @@ func (c *CookieAuth) Login(w http.ResponseWriter, r *http.Request) {
 	defer tx.Rollback(ctxE)
 
 	repo = repository.New(tx)
+
+	//
+	// Inserting the Session into the DB
 
 	sessionID, err := repo.InsertCookieSession(ctxE, repository.InsertCookieSessionParams{
 		UserID:       user.ID,
@@ -154,6 +166,9 @@ func (c *CookieAuth) Login(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, errs.DatabaseError.Err.Error(), http.StatusInternalServerError)
 		return
 	}
+
+	//
+	// Setting the Cookies
 
 	http.SetCookie(w, &http.Cookie{
 		Name:     "session_token",
