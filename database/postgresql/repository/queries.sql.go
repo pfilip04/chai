@@ -271,17 +271,36 @@ func (q *Queries) GetSessionIdByRefresh(ctx context.Context, refreshToken string
 	return session_id, err
 }
 
-const getUserByIdOrUsername = `-- name: GetUserByIdOrUsername :one
-SELECT id, username, email, password_hash, email_verified, mfa FROM users 
-WHERE username=$1 OR id=$2
+const getUserById = `-- name: GetUserById :one
+SELECT username, email, password_hash, mfa FROM users 
+WHERE id=$1
 `
 
-type GetUserByIdOrUsernameParams struct {
-	Username string    `json:"username"`
-	ID       uuid.UUID `json:"id"`
+type GetUserByIdRow struct {
+	Username     string `json:"username"`
+	Email        string `json:"email"`
+	PasswordHash string `json:"password_hash"`
+	Mfa          bool   `json:"mfa"`
 }
 
-type GetUserByIdOrUsernameRow struct {
+func (q *Queries) GetUserById(ctx context.Context, id uuid.UUID) (GetUserByIdRow, error) {
+	row := q.db.QueryRow(ctx, getUserById, id)
+	var i GetUserByIdRow
+	err := row.Scan(
+		&i.Username,
+		&i.Email,
+		&i.PasswordHash,
+		&i.Mfa,
+	)
+	return i, err
+}
+
+const getUserByUsernameOrEmail = `-- name: GetUserByUsernameOrEmail :one
+SELECT id, username, email, password_hash, email_verified, mfa FROM users 
+WHERE username=$1 OR email=$1
+`
+
+type GetUserByUsernameOrEmailRow struct {
 	ID            uuid.UUID `json:"id"`
 	Username      string    `json:"username"`
 	Email         string    `json:"email"`
@@ -290,9 +309,9 @@ type GetUserByIdOrUsernameRow struct {
 	Mfa           bool      `json:"mfa"`
 }
 
-func (q *Queries) GetUserByIdOrUsername(ctx context.Context, arg GetUserByIdOrUsernameParams) (GetUserByIdOrUsernameRow, error) {
-	row := q.db.QueryRow(ctx, getUserByIdOrUsername, arg.Username, arg.ID)
-	var i GetUserByIdOrUsernameRow
+func (q *Queries) GetUserByUsernameOrEmail(ctx context.Context, username string) (GetUserByUsernameOrEmailRow, error) {
+	row := q.db.QueryRow(ctx, getUserByUsernameOrEmail, username)
+	var i GetUserByUsernameOrEmailRow
 	err := row.Scan(
 		&i.ID,
 		&i.Username,

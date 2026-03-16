@@ -38,10 +38,7 @@ func (j *JWTAuth) ChangePassword(w http.ResponseWriter, r *http.Request) {
 	//
 	// Finding the User in the DB
 
-	user, err := repo.GetUserByIdOrUsername(ctxA, repository.GetUserByIdOrUsernameParams{
-		Username: "",
-		ID:       userID,
-	})
+	user, err := repo.GetUserById(ctxA, userID)
 
 	//
 	// Password Confirmation to procede

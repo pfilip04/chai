@@ -44,10 +44,7 @@ func (c *CookieAuth) ChangePassword(w http.ResponseWriter, r *http.Request) {
 	ctxB, cancelB := context.WithTimeout(r.Context(), c.queryTimeout)
 	defer cancelB()
 
-	user, err := repo.GetUserByIdOrUsername(ctxB, repository.GetUserByIdOrUsernameParams{
-		Username: "",
-		ID:       userID,
-	})
+	user, err := repo.GetUserById(ctxB, userID)
 
 	if err != nil {
 
@@ -79,7 +76,7 @@ func (c *CookieAuth) ChangePassword(w http.ResponseWriter, r *http.Request) {
 			MExp:    c.mailingExpiration.ChangePassExpiry,
 			MailCfg: c.mailingExpiration,
 		}, mailing.User{
-			UserID:    user.ID,
+			UserID:    userID,
 			Username:  user.Username,
 			UserEmail: user.Email,
 		}, mailing.MfaType{

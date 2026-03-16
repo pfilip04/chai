@@ -6,7 +6,6 @@ import (
 	"net/http"
 	"time"
 
-	"github.com/google/uuid"
 	"github.com/pfilip04/chai/database/postgresql/repository"
 	"github.com/pfilip04/chai/global/enums"
 	"github.com/pfilip04/chai/global/errs"
@@ -19,7 +18,7 @@ func (c *CookieAuth) Login(w http.ResponseWriter, r *http.Request) {
 	//
 	// Extracting Form Values
 
-	username := r.FormValue("username")
+	usernameOrEmail := r.FormValue("username_or_email")
 	password := r.FormValue("password")
 
 	ctxA, cancelA := context.WithTimeout(r.Context(), c.queryTimeout)
@@ -30,10 +29,7 @@ func (c *CookieAuth) Login(w http.ResponseWriter, r *http.Request) {
 	//
 	// Username and password check
 
-	user, err := repo.GetUserByIdOrUsername(ctxA, repository.GetUserByIdOrUsernameParams{
-		Username: username,
-		ID:       uuid.Nil,
-	})
+	user, err := repo.GetUserByUsernameOrEmail(ctxA, usernameOrEmail)
 
 	if err != nil || !utils.CheckPasswordHash(password, user.PasswordHash) {
 
@@ -63,7 +59,7 @@ func (c *CookieAuth) Login(w http.ResponseWriter, r *http.Request) {
 				MailCfg: c.mailingExpiration,
 			}, mailing.User{
 				UserID:    user.ID,
-				Username:  username,
+				Username:  user.Username,
 				UserEmail: user.Email,
 			}, mailing.MfaType{
 				ApiName:  enums.MfaLoginVerify,

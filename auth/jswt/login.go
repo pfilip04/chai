@@ -6,7 +6,6 @@ import (
 	"net/http"
 	"time"
 
-	"github.com/google/uuid"
 	"github.com/pfilip04/chai/database/postgresql/repository"
 	"github.com/pfilip04/chai/global/errs"
 	"github.com/pfilip04/chai/utils"
@@ -17,7 +16,7 @@ func (j *JWTAuth) Login(w http.ResponseWriter, r *http.Request) {
 	//
 	// Extracting Form Values
 
-	username := r.FormValue("username")
+	usernameOrEmail := r.FormValue("username_or_email")
 	password := r.FormValue("password")
 
 	ctxA, cancelA := context.WithTimeout(r.Context(), j.queryTimeout)
@@ -28,10 +27,7 @@ func (j *JWTAuth) Login(w http.ResponseWriter, r *http.Request) {
 	//
 	// Username and password check
 
-	user, err := repo.GetUserByIdOrUsername(ctxA, repository.GetUserByIdOrUsernameParams{
-		Username: username,
-		ID:       uuid.Nil,
-	})
+	user, err := repo.GetUserByUsernameOrEmail(ctxA, usernameOrEmail)
 
 	if err != nil || !utils.CheckPasswordHash(password, user.PasswordHash) {
 
