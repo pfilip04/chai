@@ -23,8 +23,12 @@ But watch out for:
 
 ## Future improvements
 
-- Adding Redis
-- Rate limiting and IP checking, CORS
+- Adding Redis*
+- Using Slog for structured logging
+- Test folder
+- Enrichment of contexts for multi-identifier login
+- Rate Limiter store
+- /internal endpoint for /health and /metrics
 
 ## Run it
 
