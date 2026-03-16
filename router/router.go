@@ -56,6 +56,9 @@ func NewRouter(ctx context.Context, configurations string) (chi.Router, *pgxpool
 		return nil, nil, errors.New("SECRET_KEY IS NOT SET")
 	}
 
+	//
+	// Mailing info unpacking
+
 	var senderinfo *mailing.Sender
 	var mcfg config.MailConfig
 
@@ -81,7 +84,20 @@ func NewRouter(ctx context.Context, configurations string) (chi.Router, *pgxpool
 		mcfg = config.MailConfig{}
 	}
 
+	//
+	// Handler info unpacking
+
 	hcfg, err := config.Load[config.HandlerConfig](cfg.HandlerCfg)
+
+	if err != nil {
+
+		return nil, nil, errs.LoadError.Err
+	}
+
+	//
+	// Rate Limiting info unpacking
+
+	rlcfg, err := config.Load[config.RateLimitConfig](cfg.RateLimitCfg)
 
 	if err != nil {
 
@@ -102,7 +118,7 @@ func NewRouter(ctx context.Context, configurations string) (chi.Router, *pgxpool
 	//
 	// Router init
 
-	router, err := app.NewChiRouter(hcfg.Router, cfg.EnvFile)
+	router, err := app.NewChiRouter(hcfg.Router, rlcfg, cfg.EnvFile)
 
 	return router, dbpool, nil
 }

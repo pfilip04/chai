@@ -5,5 +5,7 @@
 
     "mailing-config": "mailing/mailing-config.json",
 
-    "handler-config": "config/handler-config.json"
+    "handler-config": "config/handler-config.json",
+
+    "rate-limit-config": "router/rate-limit-config.json"
 }

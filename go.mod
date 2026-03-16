@@ -26,4 +26,5 @@ require (
 	github.com/rs/cors v1.11.1
 	golang.org/x/sync v0.19.0 // indirect
 	golang.org/x/text v0.33.0 // indirect
+	golang.org/x/time v0.15.0
 )

@@ -10,10 +10,11 @@ import (
 // Main Config File
 
 type Config struct {
-	EnvFile    string `json:"env"`            // ENV FILE NAME
-	RedisCache bool   `json:"redis"`          // true OR false FOR USING REDIS CACHING
-	MailingCfg string `json:"mailing-config"` // ADDRESS MAILING CONFIG FILE (RELATIVE TO PROJECT ROOT) - LEAVE EMPTY TO DISABLE MAILING
-	HandlerCfg string `json:"handler-config"` // ADDRES HANDLER CONFIG FILE (RELATIVE TO PROJECT ROOT)
+	EnvFile      string `json:"env"`               // ENV FILE NAME
+	RedisCache   bool   `json:"redis"`             // true OR false FOR USING REDIS CACHING
+	MailingCfg   string `json:"mailing-config"`    // ADDRESS OF THE MAILING CONFIG FILE (RELATIVE TO PROJECT ROOT) - LEAVE EMPTY TO DISABLE MAILING
+	HandlerCfg   string `json:"handler-config"`    // ADDRESS OF THE HANDLER CONFIG FILE (RELATIVE TO PROJECT ROOT)
+	RateLimitCfg string `json:"rate-limit-config"` // ADDRESS OF THE RATE LIMITING CONFIG FILE (RELATIVE TO PROJECT ROOT)
 }
 
 //
@@ -36,6 +37,14 @@ type MailConfig struct {
 	MfaLoginExpiry   Duration `json:"mfalogin-mail-expiry"` // HOW LONG UNTIL MFA_LOGIN CODE EXPIRY
 	ChangePassExpiry Duration `json:"changepass-expiry"`    // HOW LONG UNTIL CHANGING PASSWORD CODE EXPIRY
 	ForgotPassExpiry Duration `json:"forgotpass-expiry"`    // HOW LONG UNTIL FORGOT PASSWORD CODE EXPIRY
+}
+
+//
+// Rate Limiting Config File
+
+type RateLimitConfig struct {
+	Rps   int `json:"rps"`   // RATE PER SECOND (HOW MANY TOKENS ARE ADDED TO THE BUCKET EVERY SECOND - REFILL RATE)
+	Burst int `json:"burst"` // BUCKET CAPACITY (MAXIMUM NUMBER OF TOKENS THE BUCKET CAN HOLD AT ANY GIVEN MOMENT - MAX)
 }
 
 //

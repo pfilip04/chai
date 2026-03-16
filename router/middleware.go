@@ -9,26 +9,30 @@ import (
 	"github.com/pfilip04/chai/config"
 )
 
-func (app *App) NewChiRouter(routercfg config.RouterConfig, envFile string) (chi.Router, error) {
+func (app *App) NewChiRouter(routercfg config.RouterConfig, ratelimcfg config.RateLimitConfig, envFile string) (chi.Router, error) {
 
 	// Chi
 
 	router := chi.NewRouter()
 
-	// A good base middleware stack
+	// Base Middleware
 
 	router.Use(middleware.RequestID)
 	router.Use(middleware.RealIP)
-	router.Use(middleware.Logger)
+
+	// Recovering and Logging
+
 	router.Use(middleware.Recoverer)
+	router.Use(middleware.Logger)
 
-	// Set a timeout value on the request context (ctx), that will signal
-	// through ctx.Done() that the request has timed out and further
-	// processing should be stopped.
+	// Rate Limiter
 
-	router.Use(middleware.Timeout(time.Duration(routercfg.Timeout)))
+	router.Use(NewRateLimiter(ratelimcfg.Rps, ratelimcfg.Burst))
+
+	// Request Timeout and Max Request Size
 
 	router.Use(middleware.RequestSize(routercfg.RequestSize))
+	router.Use(middleware.Timeout(time.Duration(routercfg.Timeout)))
 
 	// CORS
 
