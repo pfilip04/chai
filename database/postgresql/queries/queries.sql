@@ -71,7 +71,7 @@ WHERE id=$4 AND expires_at > NOW();
 -- name: UpdateJWTSession :execrows
 UPDATE sessions 
 SET expires_at=$1 
-WHERE id=$2;
+WHERE id=$2 AND expires_at > NOW();
 
 -- name: UpdateRefreshToken :execrows
 UPDATE refresh_tokens 

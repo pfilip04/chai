@@ -17,10 +17,6 @@ CREATE TABLE IF NOT EXISTS sessions (
     csrf_token      TEXT,
 
     platform        TEXT NOT NULL,
-    user_agent      TEXT,
-    device_name     TEXT,
-
-    ip_address      INET,
 
     expires_at      TIMESTAMPTZ NOT NULL,
 
@@ -36,8 +32,6 @@ CREATE TABLE IF NOT EXISTS refresh_tokens (
 
     refresh_token   TEXT NOT NULL UNIQUE,
     expires_at      TIMESTAMPTZ NOT NULL,
-
-    replaced_by     UUID REFERENCES refresh_tokens(id) ON DELETE SET NULL,
 
     created_at      TIMESTAMPTZ NOT NULL DEFAULT now()
 );

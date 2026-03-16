@@ -438,7 +438,7 @@ func (q *Queries) UpdateCookieSession(ctx context.Context, arg UpdateCookieSessi
 const updateJWTSession = `-- name: UpdateJWTSession :execrows
 UPDATE sessions 
 SET expires_at=$1 
-WHERE id=$2
+WHERE id=$2 AND expires_at > NOW()
 `
 
 type UpdateJWTSessionParams struct {

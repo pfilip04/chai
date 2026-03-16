@@ -5,7 +5,6 @@
 package repository
 
 import (
-	"net/netip"
 	"time"
 
 	"github.com/google/uuid"
@@ -33,21 +32,17 @@ type RefreshToken struct {
 	SessionID    uuid.UUID `json:"session_id"`
 	RefreshToken string    `json:"refresh_token"`
 	ExpiresAt    time.Time `json:"expires_at"`
-	ReplacedBy   uuid.UUID `json:"replaced_by"`
 	CreatedAt    time.Time `json:"created_at"`
 }
 
 type Session struct {
-	ID           uuid.UUID   `json:"id"`
-	UserID       uuid.UUID   `json:"user_id"`
-	SessionToken string      `json:"session_token"`
-	CsrfToken    string      `json:"csrf_token"`
-	Platform     string      `json:"platform"`
-	UserAgent    string      `json:"user_agent"`
-	DeviceName   string      `json:"device_name"`
-	IpAddress    *netip.Addr `json:"ip_address"`
-	ExpiresAt    time.Time   `json:"expires_at"`
-	CreatedAt    time.Time   `json:"created_at"`
+	ID           uuid.UUID `json:"id"`
+	UserID       uuid.UUID `json:"user_id"`
+	SessionToken string    `json:"session_token"`
+	CsrfToken    string    `json:"csrf_token"`
+	Platform     string    `json:"platform"`
+	ExpiresAt    time.Time `json:"expires_at"`
+	CreatedAt    time.Time `json:"created_at"`
 }
 
 type User struct {
