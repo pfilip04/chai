@@ -13,8 +13,8 @@ import (
 )
 
 const checkMfaSession = `-- name: CheckMfaSession :one
-SELECT user_id FROM mfa_session
-WHERE mfa_session_token=$1 AND expires_at > NOW()
+SELECT user_id FROM mfa_session 
+WHERE mfa_session_token=$1 AND expires_at>NOW()
 `
 
 func (q *Queries) CheckMfaSession(ctx context.Context, mfaSessionToken string) (uuid.UUID, error) {
@@ -24,35 +24,13 @@ func (q *Queries) CheckMfaSession(ctx context.Context, mfaSessionToken string) (
 	return user_id, err
 }
 
-const checkVerificationCode = `-- name: CheckVerificationCode :one
-SELECT user_id, code FROM mfa_mail 
-WHERE id=$1 AND mfa_type=$2 AND expires_at > NOW()
+const clearAllSessions = `-- name: ClearAllSessions :execrows
+DELETE FROM sessions 
+WHERE user_id=$1
 `
 
-type CheckVerificationCodeParams struct {
-	ID      uuid.UUID `json:"id"`
-	MfaType string    `json:"mfa_type"`
-}
-
-type CheckVerificationCodeRow struct {
-	UserID uuid.UUID `json:"user_id"`
-	Code   string    `json:"code"`
-}
-
-func (q *Queries) CheckVerificationCode(ctx context.Context, arg CheckVerificationCodeParams) (CheckVerificationCodeRow, error) {
-	row := q.db.QueryRow(ctx, checkVerificationCode, arg.ID, arg.MfaType)
-	var i CheckVerificationCodeRow
-	err := row.Scan(&i.UserID, &i.Code)
-	return i, err
-}
-
-const clearMfaMail = `-- name: ClearMfaMail :execrows
-DELETE FROM mfa_mail 
-WHERE id=$1
-`
-
-func (q *Queries) ClearMfaMail(ctx context.Context, id uuid.UUID) (int64, error) {
-	result, err := q.db.Exec(ctx, clearMfaMail, id)
+func (q *Queries) ClearAllSessions(ctx context.Context, userID uuid.UUID) (int64, error) {
+	result, err := q.db.Exec(ctx, clearAllSessions, userID)
 	if err != nil {
 		return 0, err
 	}
@@ -70,6 +48,25 @@ func (q *Queries) ClearMfaSessions(ctx context.Context, userID uuid.UUID) (int64
 		return 0, err
 	}
 	return result.RowsAffected(), nil
+}
+
+const consumeVerificationCode = `-- name: ConsumeVerificationCode :one
+DELETE FROM mfa_mail 
+WHERE id=$1 AND mfa_type=$2 AND code=$3 AND expires_at>NOW() 
+RETURNING user_id
+`
+
+type ConsumeVerificationCodeParams struct {
+	ID      uuid.UUID `json:"id"`
+	MfaType string    `json:"mfa_type"`
+	Code    string    `json:"code"`
+}
+
+func (q *Queries) ConsumeVerificationCode(ctx context.Context, arg ConsumeVerificationCodeParams) (uuid.UUID, error) {
+	row := q.db.QueryRow(ctx, consumeVerificationCode, arg.ID, arg.MfaType, arg.Code)
+	var user_id uuid.UUID
+	err := row.Scan(&user_id)
+	return user_id, err
 }
 
 const countEmail = `-- name: CountEmail :one
@@ -101,9 +98,9 @@ INSERT INTO mfa_mail (user_id, mfa_type, code, expires_at)
 VALUES ($1, $2, $3, $4) 
 ON CONFLICT (user_id, mfa_type) 
 DO UPDATE 
-SET code = EXCLUDED.code, 
-    expires_at = EXCLUDED.expires_at, 
-    created_at = now()
+SET code=EXCLUDED.code, 
+    expires_at=EXCLUDED.expires_at, 
+    created_at=NOW()
 RETURNING id
 `
 
@@ -182,29 +179,11 @@ func (q *Queries) DeleteCookieSession(ctx context.Context, id uuid.UUID) (uuid.U
 
 const deleteJWTSession = `-- name: DeleteJWTSession :execrows
 DELETE FROM sessions 
-WHERE id=$1 AND user_id=$2
+WHERE id=$1
 `
 
-type DeleteJWTSessionParams struct {
-	ID     uuid.UUID `json:"id"`
-	UserID uuid.UUID `json:"user_id"`
-}
-
-func (q *Queries) DeleteJWTSession(ctx context.Context, arg DeleteJWTSessionParams) (int64, error) {
-	result, err := q.db.Exec(ctx, deleteJWTSession, arg.ID, arg.UserID)
-	if err != nil {
-		return 0, err
-	}
-	return result.RowsAffected(), nil
-}
-
-const deleteRefreshToken = `-- name: DeleteRefreshToken :execrows
-DELETE FROM refresh_tokens 
-WHERE session_id=$1
-`
-
-func (q *Queries) DeleteRefreshToken(ctx context.Context, sessionID uuid.UUID) (int64, error) {
-	result, err := q.db.Exec(ctx, deleteRefreshToken, sessionID)
+func (q *Queries) DeleteJWTSession(ctx context.Context, id uuid.UUID) (int64, error) {
+	result, err := q.db.Exec(ctx, deleteJWTSession, id)
 	if err != nil {
 		return 0, err
 	}
@@ -244,7 +223,7 @@ func (q *Queries) FindUserByUsernameOrEmail(ctx context.Context, username string
 
 const getSessionIdAndCsrf = `-- name: GetSessionIdAndCsrf :one
 SELECT id, csrf_token FROM sessions 
-WHERE session_token=$1 AND expires_at > NOW()
+WHERE session_token=$1 AND expires_at>NOW()
 `
 
 type GetSessionIdAndCsrfRow struct {
@@ -261,7 +240,7 @@ func (q *Queries) GetSessionIdAndCsrf(ctx context.Context, sessionToken string) 
 
 const getSessionIdByRefresh = `-- name: GetSessionIdByRefresh :one
 SELECT session_id FROM refresh_tokens 
-WHERE refresh_token=$1 AND expires_at > NOW()
+WHERE refresh_token=$1 AND expires_at>NOW()
 `
 
 func (q *Queries) GetSessionIdByRefresh(ctx context.Context, refreshToken string) (uuid.UUID, error) {
@@ -325,7 +304,7 @@ func (q *Queries) GetUserByUsernameOrEmail(ctx context.Context, username string)
 
 const getUserIdBySession = `-- name: GetUserIdBySession :one
 SELECT user_id FROM sessions 
-WHERE session_token=$1 AND expires_at > NOW()
+WHERE session_token=$1 AND expires_at>NOW()
 `
 
 func (q *Queries) GetUserIdBySession(ctx context.Context, sessionToken string) (uuid.UUID, error) {
@@ -337,7 +316,7 @@ func (q *Queries) GetUserIdBySession(ctx context.Context, sessionToken string) (
 
 const getUserIdBySessionId = `-- name: GetUserIdBySessionId :one
 SELECT user_id FROM sessions 
-WHERE id=$1 AND expires_at > NOW()
+WHERE id=$1 AND expires_at>NOW()
 `
 
 func (q *Queries) GetUserIdBySessionId(ctx context.Context, id uuid.UUID) (uuid.UUID, error) {
@@ -412,7 +391,7 @@ func (q *Queries) InsertRefreshToken(ctx context.Context, arg InsertRefreshToken
 const updateCookieSession = `-- name: UpdateCookieSession :execrows
 UPDATE sessions 
 SET session_token=$1, csrf_token=$2, expires_at=$3 
-WHERE id=$4 AND expires_at > NOW()
+WHERE id=$4 AND expires_at>NOW()
 `
 
 type UpdateCookieSessionParams struct {
@@ -438,7 +417,7 @@ func (q *Queries) UpdateCookieSession(ctx context.Context, arg UpdateCookieSessi
 const updateJWTSession = `-- name: UpdateJWTSession :execrows
 UPDATE sessions 
 SET expires_at=$1 
-WHERE id=$2 AND expires_at > NOW()
+WHERE id=$2 AND expires_at>NOW()
 `
 
 type UpdateJWTSessionParams struct {
@@ -457,7 +436,7 @@ func (q *Queries) UpdateJWTSession(ctx context.Context, arg UpdateJWTSessionPara
 const updateRefreshToken = `-- name: UpdateRefreshToken :execrows
 UPDATE refresh_tokens 
 SET refresh_token=$1, expires_at=$2 
-WHERE refresh_token=$3 AND session_id=$4 AND expires_at > NOW()
+WHERE refresh_token=$3 AND session_id=$4 AND expires_at>NOW()
 `
 
 type UpdateRefreshTokenParams struct {
@@ -494,6 +473,20 @@ type UpdateUserPasswordParams struct {
 
 func (q *Queries) UpdateUserPassword(ctx context.Context, arg UpdateUserPasswordParams) (int64, error) {
 	result, err := q.db.Exec(ctx, updateUserPassword, arg.PasswordHash, arg.UpdatedAt, arg.ID)
+	if err != nil {
+		return 0, err
+	}
+	return result.RowsAffected(), nil
+}
+
+const verifyEmail = `-- name: VerifyEmail :execrows
+UPDATE users 
+SET email_verified=TRUE, updated_at=NOW() 
+WHERE id=$1
+`
+
+func (q *Queries) VerifyEmail(ctx context.Context, id uuid.UUID) (int64, error) {
+	result, err := q.db.Exec(ctx, verifyEmail, id)
 	if err != nil {
 		return 0, err
 	}

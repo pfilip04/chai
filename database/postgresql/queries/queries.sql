@@ -32,11 +32,7 @@ RETURNING user_id;
 
 -- name: DeleteJWTSession :execrows
 DELETE FROM sessions 
-WHERE id=$1 AND user_id=$2;
-
--- name: DeleteRefreshToken :execrows
-DELETE FROM refresh_tokens 
-WHERE session_id=$1;
+WHERE id=$1;
 
 -- name: DeleteUser :execrows
 DELETE FROM users 
@@ -44,19 +40,19 @@ WHERE id=$1;
 
 -- name: GetUserIdBySession :one
 SELECT user_id FROM sessions 
-WHERE session_token=$1 AND expires_at > NOW();
+WHERE session_token=$1 AND expires_at>NOW();
 
 -- name: GetSessionIdAndCsrf :one
 SELECT id, csrf_token FROM sessions 
-WHERE session_token=$1 AND expires_at > NOW();
+WHERE session_token=$1 AND expires_at>NOW();
 
 -- name: GetSessionIdByRefresh :one
 SELECT session_id FROM refresh_tokens 
-WHERE refresh_token=$1 AND expires_at > NOW();
+WHERE refresh_token=$1 AND expires_at>NOW();
 
 -- name: GetUserIdBySessionId :one
 SELECT user_id FROM sessions 
-WHERE id=$1 AND expires_at > NOW();
+WHERE id=$1 AND expires_at>NOW();
 
 -- name: UpdateUserPassword :execrows
 UPDATE users 
@@ -66,17 +62,17 @@ WHERE id=$3;
 -- name: UpdateCookieSession :execrows
 UPDATE sessions 
 SET session_token=$1, csrf_token=$2, expires_at=$3 
-WHERE id=$4 AND expires_at > NOW();
+WHERE id=$4 AND expires_at>NOW();
 
 -- name: UpdateJWTSession :execrows
 UPDATE sessions 
 SET expires_at=$1 
-WHERE id=$2 AND expires_at > NOW();
+WHERE id=$2 AND expires_at>NOW();
 
 -- name: UpdateRefreshToken :execrows
 UPDATE refresh_tokens 
 SET refresh_token=$1, expires_at=$2 
-WHERE refresh_token=$3 AND session_id=$4 AND expires_at > NOW();
+WHERE refresh_token=$3 AND session_id=$4 AND expires_at>NOW();
 
 -- name: CountUsername :one
 SELECT COUNT(*) FROM users 
@@ -91,18 +87,15 @@ INSERT INTO mfa_mail (user_id, mfa_type, code, expires_at)
 VALUES ($1, $2, $3, $4) 
 ON CONFLICT (user_id, mfa_type) 
 DO UPDATE 
-SET code = EXCLUDED.code, 
-    expires_at = EXCLUDED.expires_at, 
-    created_at = now()
+SET code=EXCLUDED.code, 
+    expires_at=EXCLUDED.expires_at, 
+    created_at=NOW()
 RETURNING id;
 
--- name: CheckVerificationCode :one
-SELECT user_id, code FROM mfa_mail 
-WHERE id=$1 AND mfa_type=$2 AND expires_at > NOW();
-
--- name: ClearMfaMail :execrows
+-- name: ConsumeVerificationCode :one
 DELETE FROM mfa_mail 
-WHERE id=$1;
+WHERE id=$1 AND mfa_type=$2 AND code=$3 AND expires_at>NOW() 
+RETURNING user_id;
 
 -- name: FindUserByUsernameOrEmail :one
 SELECT id, username, email FROM users 
@@ -113,9 +106,18 @@ INSERT INTO mfa_session (user_id, mfa_session_token, expires_at)
 VALUES ($1, $2, $3);
 
 -- name: CheckMfaSession :one
-SELECT user_id FROM mfa_session
-WHERE mfa_session_token=$1 AND expires_at > NOW();
+SELECT user_id FROM mfa_session 
+WHERE mfa_session_token=$1 AND expires_at>NOW();
 
 -- name: ClearMfaSessions :execrows
 DELETE FROM mfa_session 
+WHERE user_id=$1;
+
+-- name: VerifyEmail :execrows
+UPDATE users 
+SET email_verified=TRUE, updated_at=NOW() 
+WHERE id=$1;
+
+-- name: ClearAllSessions :execrows
+DELETE FROM sessions 
 WHERE user_id=$1;

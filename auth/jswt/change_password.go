@@ -2,6 +2,7 @@ package jswt
 
 import (
 	"context"
+	"fmt"
 	"net/http"
 	"time"
 
@@ -69,6 +70,18 @@ func (j *JWTAuth) ChangePassword(w http.ResponseWriter, r *http.Request) {
 	ctxB, cancelB := context.WithTimeout(r.Context(), j.queryTimeout)
 	defer cancelB()
 
+	tx, err := j.DB.Begin(ctxB)
+
+	if err != nil {
+
+		http.Error(w, errs.DatabaseError.Err.Error(), errs.DatabaseError.Status)
+		return
+	}
+
+	defer tx.Rollback(ctxB)
+
+	repo = repository.New(tx)
+
 	//
 	// Updating User Password
 
@@ -83,4 +96,23 @@ func (j *JWTAuth) ChangePassword(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, errs.DatabaseError.Err.Error(), errs.DatabaseError.Status)
 		return
 	}
+
+	//
+	// Terminating all sessions
+
+	rows, err = repo.ClearAllSessions(ctxB, userID)
+
+	if err != nil || rows == 0 {
+
+		http.Error(w, errs.DatabaseError.Err.Error(), errs.DatabaseError.Status)
+		return
+	}
+
+	if err := tx.Commit(ctxB); err != nil {
+
+		http.Error(w, errs.DatabaseError.Err.Error(), errs.DatabaseError.Status)
+		return
+	}
+
+	fmt.Fprintln(w, "Password changed successfully")
 }

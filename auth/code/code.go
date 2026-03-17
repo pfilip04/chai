@@ -18,9 +18,7 @@ func (vc *VerificationCode) VerifyCode(w http.ResponseWriter, r *http.Request) {
 	// Pulling data from the form and the link
 
 	code := r.FormValue("code")
-
 	mfaType := chi.URLParam(r, "mfa_type")
-
 	id, err := uuid.Parse(r.URL.Query().Get("id"))
 
 	if err != nil {
@@ -29,16 +27,55 @@ func (vc *VerificationCode) VerifyCode(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Calling the func to verify Crdentials
+	// Creating a temporary MFA TOKEN for authorization of the next mfa_action
 
-	userId, verified, err := MfaVerify(DbQuery{
-		Db:           vc.DB,
-		queryTimeout: vc.queryTimeout,
-		ctx:          r.Context(),
-	}, Credentials{
-		mfaId:   id,
-		code:    code,
-		apiName: mfaType,
+	mfaSessionToken, err := utils.GenerateToken(32)
+
+	if err != nil {
+
+		http.Error(w, errs.ServerError.Err.Error(), errs.ServerError.Status)
+		return
+	}
+
+	hashedCode := utils.HashToken(code)
+	hashedMfaToken := utils.HashToken(mfaSessionToken)
+	mfaExpiresAt := time.Now().UTC().Add(vc.mfaTokenExpiration)
+
+	ctxA, cancelA := context.WithTimeout(r.Context(), vc.queryTimeout)
+	defer cancelA()
+
+	tx, err := vc.DB.Begin(ctxA)
+
+	if err != nil {
+
+		http.Error(w, errs.DatabaseError.Err.Error(), errs.DatabaseError.Status)
+		return
+	}
+
+	defer tx.Rollback(ctxA)
+
+	repo := repository.New(tx)
+
+	// Check the Credentials
+
+	userID, err := repo.ConsumeVerificationCode(ctxA, repository.ConsumeVerificationCodeParams{
+		ID:      id,
+		MfaType: mfaType,
+		Code:    hashedCode,
+	})
+
+	if err != nil {
+
+		http.Error(w, errs.AuthError.Err.Error(), errs.AuthError.Status)
+		return
+	}
+
+	// Inserting the Token into the DB
+
+	err = repo.CreateMfaSession(ctxA, repository.CreateMfaSessionParams{
+		UserID:          userID,
+		MfaSessionToken: hashedMfaToken,
+		ExpiresAt:       mfaExpiresAt,
 	})
 
 	if err != nil {
@@ -47,39 +84,7 @@ func (vc *VerificationCode) VerifyCode(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if !verified {
-
-		http.Error(w, "Verification code missmatch", http.StatusUnauthorized)
-		return
-	}
-
-	// Creating a temporary MFA TOKEN for authorization of the next mfa_action
-
-	mfaSessionToken, err := utils.GenerateToken(64)
-
-	if err != nil {
-
-		http.Error(w, errs.ServerError.Err.Error(), errs.ServerError.Status)
-		return
-	}
-
-	hashedMfaToken := utils.HashToken(mfaSessionToken)
-	mfaExpiresAt := time.Now().UTC().Add(vc.mfaTokenExpiration)
-
-	ctxA, cancelA := context.WithTimeout(r.Context(), vc.queryTimeout)
-	defer cancelA()
-
-	repo := repository.New(vc.DB)
-
-	// Inserting the Token into the DB
-
-	err = repo.CreateMfaSession(ctxA, repository.CreateMfaSessionParams{
-		UserID:          userId,
-		MfaSessionToken: hashedMfaToken,
-		ExpiresAt:       mfaExpiresAt,
-	})
-
-	if err != nil {
+	if err = tx.Commit(ctxA); err != nil {
 
 		http.Error(w, errs.DatabaseError.Err.Error(), errs.DatabaseError.Status)
 		return

@@ -29,41 +29,11 @@ func (c *CookieAuth) Logout(w http.ResponseWriter, r *http.Request) {
 	ctxA, cancelA := context.WithTimeout(r.Context(), c.queryTimeout)
 	defer cancelA()
 
-	tx, err := c.DB.Begin(ctxA)
-
-	if err != nil {
-
-		http.Error(w, errs.DatabaseError.Err.Error(), http.StatusInternalServerError)
-		return
-	}
-
-	defer tx.Rollback(ctxA)
-
-	repo := repository.New(tx)
-
-	rows, err := repo.DeleteRefreshToken(ctxA, sessionID)
-
-	if err != nil {
-
-		http.Error(w, errs.DatabaseError.Err.Error(), http.StatusInternalServerError)
-		return
-	}
-
-	if rows == 0 {
-
-		http.Error(w, "No refresh token found/expired", http.StatusUnauthorized)
-		return
-	}
+	repo := repository.New(c.DB)
 
 	_, err = repo.DeleteCookieSession(ctxA, sessionID)
 
 	if err != nil {
-
-		http.Error(w, errs.DatabaseError.Err.Error(), http.StatusInternalServerError)
-		return
-	}
-
-	if err := tx.Commit(ctxA); err != nil {
 
 		http.Error(w, errs.DatabaseError.Err.Error(), http.StatusInternalServerError)
 		return

@@ -40,48 +40,19 @@ func (j *JWTAuth) Delete(w http.ResponseWriter, r *http.Request) {
 
 	repo := repository.New(tx)
 
-	rows, err := repo.DeleteRefreshToken(ctxA, sessionID)
+	rows, err := repo.DeleteJWTSession(ctxA, sessionID)
 
-	if err != nil {
-
-		http.Error(w, errs.DatabaseError.Err.Error(), http.StatusInternalServerError)
-		return
-	}
-
-	if rows == 0 {
-
-		http.Error(w, "No refresh token found/expired", http.StatusUnauthorized)
-		return
-	}
-
-	rows, err = repo.DeleteJWTSession(ctxA, repository.DeleteJWTSessionParams{
-		ID:     sessionID,
-		UserID: userID,
-	})
-
-	if err != nil {
+	if err != nil || rows == 0 {
 
 		http.Error(w, errs.DatabaseError.Err.Error(), http.StatusInternalServerError)
-		return
-	}
-
-	if rows == 0 {
-
-		http.Error(w, "No session found/expired", http.StatusUnauthorized)
 		return
 	}
 
 	rows, err = repo.DeleteUser(ctxA, userID)
 
-	if err != nil {
+	if err != nil || rows == 0 {
 
 		http.Error(w, errs.DatabaseError.Err.Error(), http.StatusInternalServerError)
-		return
-	}
-
-	if rows == 0 {
-
-		http.Error(w, "No user found to delete", http.StatusUnauthorized)
 		return
 	}
 

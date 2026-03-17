@@ -41,20 +41,6 @@ func (c *CookieAuth) Delete(w http.ResponseWriter, r *http.Request) {
 	//
 	// Deleting the Session, CSRF and Refresh Tokens alongside the User Account from the DB
 
-	rows, err := repo.DeleteRefreshToken(ctxA, sessionID)
-
-	if err != nil {
-
-		http.Error(w, errs.DatabaseError.Err.Error(), http.StatusInternalServerError)
-		return
-	}
-
-	if rows == 0 {
-
-		http.Error(w, "No refresh token found/expired", http.StatusUnauthorized)
-		return
-	}
-
 	userID, err := repo.DeleteCookieSession(ctxA, sessionID)
 
 	if err != nil {
@@ -63,17 +49,11 @@ func (c *CookieAuth) Delete(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	rows, err = repo.DeleteUser(ctxA, userID)
+	rows, err := repo.DeleteUser(ctxA, userID)
 
-	if err != nil {
+	if err != nil || rows == 0 {
 
 		http.Error(w, errs.DatabaseError.Err.Error(), http.StatusInternalServerError)
-		return
-	}
-
-	if rows == 0 {
-
-		http.Error(w, "No user found to delete", http.StatusUnauthorized)
 		return
 	}
 

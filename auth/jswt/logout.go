@@ -14,7 +14,7 @@ func (j *JWTAuth) Logout(w http.ResponseWriter, r *http.Request) {
 	//
 	// Validating the User Authorization Token
 
-	userID, sessionID, err := j.Authorize(r)
+	_, sessionID, err := j.Authorize(r)
 
 	if err != nil {
 
@@ -28,40 +28,13 @@ func (j *JWTAuth) Logout(w http.ResponseWriter, r *http.Request) {
 	ctxA, cancelA := context.WithTimeout(r.Context(), j.queryTimeout)
 	defer cancelA()
 
-	tx, err := j.DB.Begin(ctxA)
+	repo := repository.New(j.DB)
 
-	if err != nil {
-
-		http.Error(w, errs.DatabaseError.Err.Error(), http.StatusInternalServerError)
-		return
-	}
-
-	defer tx.Rollback(ctxA)
-
-	repo := repository.New(tx)
-
-	rows, err := repo.DeleteRefreshToken(ctxA, sessionID)
+	rows, err := repo.DeleteJWTSession(ctxA, sessionID)
 
 	if err != nil || rows == 0 {
 
 		http.Error(w, errs.DatabaseError.Err.Error(), errs.DatabaseError.Status)
-		return
-	}
-
-	rows, err = repo.DeleteJWTSession(ctxA, repository.DeleteJWTSessionParams{
-		ID:     sessionID,
-		UserID: userID,
-	})
-
-	if err != nil || rows == 0 {
-
-		http.Error(w, errs.DatabaseError.Err.Error(), errs.DatabaseError.Status)
-		return
-	}
-
-	if err := tx.Commit(ctxA); err != nil {
-
-		http.Error(w, errs.DatabaseError.Err.Error(), http.StatusInternalServerError)
 		return
 	}
 
