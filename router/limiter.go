@@ -1,6 +1,7 @@
 package router
 
 import (
+	"net"
 	"net/http"
 	"sync"
 	"time"
@@ -20,7 +21,7 @@ func NewRateLimiter(rps int, burst int) func(http.Handler) http.Handler {
 
 	// Mutex for safe access and the map of client structs
 
-	var mu sync.Mutex
+	var mu sync.RWMutex
 	var clients = make(map[string]*client)
 
 	return func(next http.Handler) http.Handler {
@@ -29,34 +30,39 @@ func NewRateLimiter(rps int, burst int) func(http.Handler) http.Handler {
 
 			// IP
 
-			ip := r.RemoteAddr
+			ip, _, err := net.SplitHostPort(r.RemoteAddr)
 
-			// LOCK
+			if err != nil {
 
-			mu.Lock()
-
-			// If new add to map
-
-			if _, ok := clients[ip]; !ok {
-
-				clients[ip] = &client{
-					limiter: rate.NewLimiter(rate.Limit(rps), burst),
-				}
+				http.Error(w, "Internal Server Error", http.StatusInternalServerError)
+				return
 			}
 
-			// Update last-seen
+			mu.RLock()
+			c, ok := clients[ip]
+			mu.RUnlock()
 
-			clients[ip].lastSeenAt = time.Now().UTC()
+			if !ok {
 
-			limiter := clients[ip].limiter
+				mu.Lock()
+				c, ok = clients[ip]
+				if !ok {
 
+					c = &client{
+						limiter: rate.NewLimiter(rate.Limit(rps), burst),
+					}
+					clients[ip] = c
+				}
+				mu.Unlock()
+			}
+
+			mu.Lock()
+			c.lastSeenAt = time.Now().UTC()
 			mu.Unlock()
-
-			//UNLOCK
 
 			// Check the limiter status
 
-			if !limiter.Allow() {
+			if !c.limiter.Allow() {
 
 				http.Error(w, "Too many requests!", http.StatusTooManyRequests)
 				return

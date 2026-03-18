@@ -116,9 +116,29 @@ func NewRouter(ctx context.Context, configurations string) (chi.Router, *pgxpool
 	app.InitCode(hcfg.Code, hcfg.MfaExp)
 
 	//
+	// Global Cors, Logger and Rate Limiter instances
+
+	// Cors
+
+	cors, err := NewCors(cfg.EnvFile)
+
+	if err != nil {
+
+		return nil, nil, err
+	}
+
+	// Logger
+
+	logger := SlogMiddleware(NewLogger())
+
+	// Limiter
+
+	limiter := NewRateLimiter(rlcfg.Rps, rlcfg.Burst)
+
+	//
 	// Router init
 
-	router, err := app.NewChiRouter(hcfg.Router, rlcfg, cfg.EnvFile)
+	router, err := app.NewChiRouter(hcfg.Router, cors.Handler, logger, limiter)
 
 	return router, dbpool, nil
 }

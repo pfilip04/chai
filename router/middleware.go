@@ -1,6 +1,7 @@
 package router
 
 import (
+	"net/http"
 	"time"
 
 	"github.com/go-chi/chi/v5"
@@ -9,7 +10,8 @@ import (
 	"github.com/pfilip04/chai/config"
 )
 
-func (app *App) NewChiRouter(routercfg config.RouterConfig, ratelimcfg config.RateLimitConfig, envFile string) (chi.Router, error) {
+func (app *App) NewChiRouter(routercfg config.RouterConfig, cors func(http.Handler) http.Handler,
+	logger func(http.Handler) http.Handler, limiter func(http.Handler) http.Handler) (chi.Router, error) {
 
 	// Chi
 
@@ -23,27 +25,26 @@ func (app *App) NewChiRouter(routercfg config.RouterConfig, ratelimcfg config.Ra
 	// Recovering and Logging
 
 	router.Use(middleware.Recoverer)
-	router.Use(middleware.Logger)
-
-	// Rate Limiter
-
-	router.Use(NewRateLimiter(ratelimcfg.Rps, ratelimcfg.Burst))
+	router.Use(logger)
 
 	// Request Timeout and Max Request Size
 
 	router.Use(middleware.RequestSize(routercfg.RequestSize))
 	router.Use(middleware.Timeout(time.Duration(routercfg.Timeout)))
 
+	// Rate Limiter
+
+	router.Use(limiter)
+
+	// Some middleware
+
+	router.Use(middleware.NoCache)
+	router.Use(middleware.SetHeader("X-Content-Type-Options", "nosniff"))
+	router.Use(middleware.SetHeader("X-Frame-Options", "DENY"))
+
 	// CORS
 
-	cors, err := NewCors(envFile)
-
-	if err != nil {
-
-		return nil, err
-	}
-
-	router.Use(cors.Handler)
+	router.Use(cors)
 
 	//
 	// Api URLs
@@ -68,6 +69,7 @@ func (app *App) NewChiRouter(routercfg config.RouterConfig, ratelimcfg config.Ra
 
 		r.Route("/mfa", func(r chi.Router) {
 
+			r.Post("/register", app.Cookie.RegisterMfa)
 			r.Post("/login", app.Cookie.LoginMfa)
 			r.Post("/password-reset", app.Cookie.PasswordReset)
 		})

@@ -75,21 +75,21 @@ func (d *Duration) UnmarshalJSON(b []byte) error {
 // Sub Structs from Handler Config File
 
 type RouterConfig struct {
-	Timeout     Duration `json:"timeout"`     // HOW LONG CAN REQUEST RUN FOR (LIMITING RESOURCE USAGE)
-	RequestSize int64    `json:"requestSize"` // HOW LARGE CAN REQUEST BE (LIMITING RESOURCE USAGE)
+	Timeout     Duration `json:"timeout"`      // HOW LONG CAN REQUEST RUN FOR (LIMITING RESOURCE USAGE)
+	RequestSize int64    `json:"request-size"` // HOW LARGE CAN REQUEST BE (LIMITING RESOURCE USAGE)
 }
 
 type CookieConfig struct {
-	QueryTimeout           Duration `json:"queryTimeout"`             // HOW LONG CAN DB BLOCK IN COOKIE AUTH RUN FOR
+	QueryTimeout           Duration `json:"query-timeout"`            // HOW LONG CAN DB BLOCK IN COOKIE AUTH RUN FOR
 	SessionTokenExpiration Duration `json:"session-token-expiration"` // HOW LONG IS SESSION TOKEN VALID FOR
 	RefreshTokenExpiration Duration `json:"refresh-token-expiration"` // HOW LONG IS REFRESH TOKEN VALID FOR
 }
 
 type JWTConfig struct {
-	QueryTimeout           Duration `json:"queryTimeout"`             // HOW LONG CAN DB BLOCK IN JWT AUTH RUN FOR
+	QueryTimeout           Duration `json:"query-timeout"`            // HOW LONG CAN DB BLOCK IN JWT AUTH RUN FOR
 	JwtTokenExpiration     Duration `json:"jwt-token-expiration"`     // HOW LONG IS JWT TOKEN VALID FOR
 	RefreshTokenExpiration Duration `json:"refresh-token-expiration"` // HOW LONG IS REFRESH TOKEN VALID FOR
-	SpecialName            string   `json:"specialName"`              // NAME OF YOUR API (ONE OF THE CLAIMS IN THE JWT) - THIS IS NOT TO BE CONFUSED WITH THE SECRET
+	SpecialName            string   `json:"special-name"`             // NAME OF YOUR API (ONE OF THE CLAIMS IN THE JWT) - THIS IS NOT TO BE CONFUSED WITH THE SECRET
 }
 
 //

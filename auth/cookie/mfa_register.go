@@ -9,7 +9,7 @@ import (
 	"github.com/pfilip04/chai/global/errs"
 )
 
-func (c *CookieAuth) MfaRegister(w http.ResponseWriter, r *http.Request) {
+func (c *CookieAuth) RegisterMfa(w http.ResponseWriter, r *http.Request) {
 
 	//
 	// Validating the MFA Authorization Token
