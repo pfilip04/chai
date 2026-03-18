@@ -23,12 +23,13 @@ But watch out for:
 
 ## Future improvements
 
+- Write Error func for cleaner error handling and better global errors
+- Enrichment of contexts for multi-identifier login tracking
+- Creating admin stats, /internal endpoint for /health and /metrics
+- Admin config for admin mode (/internal endpoint)
+- Test package for automatic testing
+- Global cleanup (in-memory and db)
 - Adding Redis*
-- Using Slog for structured logging
-- Test folder
-- Enrichment of contexts for multi-identifier login
-- Rate Limiter store
-- /internal endpoint for /health and /metrics
 
 ## Run it
 
