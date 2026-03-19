@@ -5,6 +5,11 @@ import (
 	"net/http"
 )
 
+func WriteError(w http.ResponseWriter, er Err) {
+
+	http.Error(w, er.Err.Error(), er.Status)
+}
+
 var (
 	AuthError = Err{
 		Err:    errors.New("Unauthorized"),

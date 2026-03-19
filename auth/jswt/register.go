@@ -18,8 +18,11 @@ func (j *JWTAuth) Register(w http.ResponseWriter, r *http.Request) {
 	// Extracting Form Values
 
 	username := r.FormValue("username")
-	password := r.FormValue("password")
 	email := r.FormValue("email")
+
+	password := r.FormValue("password")
+	password_repeat := r.FormValue("password-repeat")
+
 	mfa := r.FormValue("mfa")
 
 	//
@@ -52,6 +55,12 @@ func (j *JWTAuth) Register(w http.ResponseWriter, r *http.Request) {
 	if !utils.CheckUniqueEmail(r, email, j.DB, j.queryTimeout) {
 
 		http.Error(w, "E-mail taken", http.StatusConflict)
+		return
+	}
+
+	if password != password_repeat {
+
+		http.Error(w, "Password missmatch", http.StatusConflict)
 		return
 	}
 

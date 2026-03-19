@@ -31,9 +31,15 @@ func (c *CookieAuth) Login(w http.ResponseWriter, r *http.Request) {
 
 	user, err := repo.GetUserByUsernameOrEmail(ctxA, usernameOrEmail)
 
-	if err != nil || !utils.CheckPasswordHash(password, user.PasswordHash) {
+	if err != nil {
 
-		http.Error(w, "Invalid username or password", http.StatusUnauthorized)
+		http.Error(w, "Invalid username", http.StatusConflict)
+		return
+	}
+
+	if !utils.CheckPasswordHash(password, user.PasswordHash) {
+
+		http.Error(w, "Incorrect password", http.StatusConflict)
 		return
 	}
 
