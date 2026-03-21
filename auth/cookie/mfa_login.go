@@ -2,6 +2,7 @@ package cookie
 
 import (
 	"context"
+	"fmt"
 	"net/http"
 	"time"
 
@@ -173,4 +174,6 @@ func (c *CookieAuth) LoginMfa(w http.ResponseWriter, r *http.Request) {
 		SameSite: http.SameSiteStrictMode,
 		Path:     "/",
 	})
+
+	fmt.Fprintln(w, "User login successful!")
 }

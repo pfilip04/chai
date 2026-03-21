@@ -132,6 +132,7 @@ func (c *CookieAuth) Register(w http.ResponseWriter, r *http.Request) {
 		}
 
 		fmt.Fprintln(w, message)
+		return
 	}
 
 	fmt.Fprintln(w, "User registration successful!")

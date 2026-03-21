@@ -9,6 +9,7 @@ CREATE TABLE IF NOT EXISTS mfa_mail (
 
     created_at          TIMESTAMPTZ NOT NULL DEFAULT now(),
 
+    CONSTRAINT possible_mfa_type CHECK (mfa_type IN ('register-verify', 'mfa-login-verify', 'forgot-password-verify', 'change-password-verify')),
     CONSTRAINT uq_user_mfa_type UNIQUE (user_id, mfa_type)
 );
 
