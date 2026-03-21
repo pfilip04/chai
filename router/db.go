@@ -21,7 +21,7 @@ func ConnectDB(ctx context.Context, dbvar string) (*pgxpool.Pool, error) {
 
 	if err != nil {
 
-		return nil, fmt.Errorf("Unable to connect to database: %v\n", err)
+		return nil, fmt.Errorf("Unable to connect to database: %w", err)
 	}
 
 	//
@@ -35,7 +35,7 @@ func ConnectDB(ctx context.Context, dbvar string) (*pgxpool.Pool, error) {
 	if err != nil {
 
 		dbpool.Close()
-		return nil, fmt.Errorf("Database unreachable: %v\n", err)
+		return nil, fmt.Errorf("Database unreachable: %w", err)
 	}
 
 	return dbpool, nil

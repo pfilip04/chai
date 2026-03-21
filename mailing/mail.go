@@ -6,7 +6,6 @@ import (
 	"time"
 
 	"github.com/pfilip04/chai/database/postgresql/repository"
-	"github.com/pfilip04/chai/global/errs"
 	"github.com/pfilip04/chai/utils"
 )
 
@@ -22,7 +21,7 @@ func SendMail(db DbQuerying, mailc Mailc, user User, mfat MfaType, s *Sender) (s
 
 	if err != nil {
 
-		return errs.ServerError.Err.Error(), errs.ServerError.Err
+		return "", fmt.Errorf("Failed to generate OTP: %w", err)
 	}
 
 	codeHash := utils.HashToken(code)
@@ -41,7 +40,7 @@ func SendMail(db DbQuerying, mailc Mailc, user User, mfat MfaType, s *Sender) (s
 
 	if err != nil {
 
-		return errs.ServerError.Err.Error(), errs.ServerError.Err
+		return "", fmt.Errorf("Failed to insert mailing cred into the db: %w", err)
 	}
 
 	//
@@ -61,7 +60,7 @@ func SendMail(db DbQuerying, mailc Mailc, user User, mfat MfaType, s *Sender) (s
 
 	if err != nil {
 
-		return errs.ServerError.Err.Error(), errs.ServerError.Err
+		return "", fmt.Errorf("Failed when mailing: %w", err)
 	}
 
 	return fmt.Sprintf("%s mail sent successfully!", mfat.MailName), nil

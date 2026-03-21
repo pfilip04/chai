@@ -20,7 +20,7 @@ func MailHtml(username string, code string, link string, htmlf string) (string, 
 
 	if err != nil {
 
-		return "", fmt.Errorf("Failed to read template: %w", err)
+		return "", fmt.Errorf("Failed to read HTML template: %w", err)
 	}
 
 	htmlBody := string(htmlBytes)

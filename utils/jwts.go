@@ -1,7 +1,7 @@
 package utils
 
 import (
-	"fmt"
+	"errors"
 	"time"
 
 	"github.com/golang-jwt/jwt/v5"
@@ -44,8 +44,6 @@ func CreateJWT(secret []byte, userID uuid.UUID, sessionID uuid.UUID, issuer stri
 
 func CheckJWT(tokenString string, secret []byte, issuer string) (uuid.UUID, uuid.UUID, error) {
 
-	errInvalid := fmt.Errorf("invalid token")
-
 	claims := &CustomClaims{}
 
 	token, err := jwt.ParseWithClaims(
@@ -54,7 +52,7 @@ func CheckJWT(tokenString string, secret []byte, issuer string) (uuid.UUID, uuid
 		func(token *jwt.Token) (any, error) {
 
 			if _, ok := token.Method.(*jwt.SigningMethodHMAC); !ok {
-				return nil, errInvalid
+				return nil, errors.New("Invalid token method")
 			}
 
 			return secret, nil
@@ -65,17 +63,17 @@ func CheckJWT(tokenString string, secret []byte, issuer string) (uuid.UUID, uuid
 	)
 
 	if err != nil || !token.Valid {
-		return uuid.Nil, uuid.Nil, errInvalid
+		return uuid.Nil, uuid.Nil, errors.New("Invalid token")
 	}
 
 	userID, err := uuid.Parse(claims.Subject)
 	if err != nil {
-		return uuid.Nil, uuid.Nil, errInvalid
+		return uuid.Nil, uuid.Nil, errors.New("Invalid token subject")
 	}
 
 	sessionID, err := uuid.Parse(claims.SessionID)
 	if err != nil {
-		return uuid.Nil, uuid.Nil, errInvalid
+		return uuid.Nil, uuid.Nil, errors.New("Invalid token session id")
 	}
 
 	return userID, sessionID, nil

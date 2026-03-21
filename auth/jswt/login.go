@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"github.com/pfilip04/chai/database/postgresql/repository"
+	"github.com/pfilip04/chai/global/enums"
 	"github.com/pfilip04/chai/global/errs"
 	"github.com/pfilip04/chai/utils"
 )
@@ -31,13 +32,13 @@ func (j *JWTAuth) Login(w http.ResponseWriter, r *http.Request) {
 
 	if err != nil {
 
-		http.Error(w, "Invalid username", http.StatusConflict)
+		errs.WriteError(w, enums.Login, err, "JWT: Incorrect username or email", errs.AuthError)
 		return
 	}
 
 	if !utils.CheckPasswordHash(password, user.PasswordHash) {
 
-		http.Error(w, "Incorrect password", http.StatusConflict)
+		errs.WriteError(w, enums.Login, errs.AuthError.Err, "JWT: Incorrect password", errs.AuthError)
 		return
 	}
 
@@ -48,7 +49,7 @@ func (j *JWTAuth) Login(w http.ResponseWriter, r *http.Request) {
 
 		if !user.EmailVerified {
 
-			http.Error(w, errs.AuthError.Err.Error(), http.StatusUnauthorized)
+			errs.WriteError(w, enums.Login, errs.AuthError.Err, "JWT: Email not verified", errs.AuthError)
 			return
 		}
 	}
@@ -60,7 +61,7 @@ func (j *JWTAuth) Login(w http.ResponseWriter, r *http.Request) {
 
 	if err != nil {
 
-		http.Error(w, "Couldn't generate refresh token", http.StatusInternalServerError)
+		errs.WriteError(w, enums.Login, err, "JWT: Couldn't generate refresh token", errs.ServerError)
 		return
 	}
 
@@ -78,7 +79,7 @@ func (j *JWTAuth) Login(w http.ResponseWriter, r *http.Request) {
 
 	if err != nil {
 
-		http.Error(w, errs.DatabaseError.Err.Error(), http.StatusInternalServerError)
+		errs.WriteError(w, enums.Login, err, "JWT: Transaction start error", errs.ServerError)
 		return
 	}
 
@@ -97,7 +98,7 @@ func (j *JWTAuth) Login(w http.ResponseWriter, r *http.Request) {
 
 	if err != nil {
 
-		http.Error(w, errs.DatabaseError.Err.Error(), http.StatusInternalServerError)
+		errs.WriteError(w, enums.Login, err, "JWT: Couldn't insert session into the db", errs.DatabaseError)
 		return
 	}
 
@@ -105,7 +106,7 @@ func (j *JWTAuth) Login(w http.ResponseWriter, r *http.Request) {
 
 	if err != nil {
 
-		http.Error(w, "Couldn't create JWT", http.StatusInternalServerError)
+		errs.WriteError(w, enums.Login, err, "JWT: Couldn't create JWT", errs.ServerError)
 		return
 	}
 
@@ -117,13 +118,13 @@ func (j *JWTAuth) Login(w http.ResponseWriter, r *http.Request) {
 
 	if err != nil {
 
-		http.Error(w, errs.DatabaseError.Err.Error(), http.StatusInternalServerError)
+		errs.WriteError(w, enums.Login, err, "JWT: Couldn't insert refresh token into the db", errs.DatabaseError)
 		return
 	}
 
 	if err := tx.Commit(ctxE); err != nil {
 
-		http.Error(w, errs.DatabaseError.Err.Error(), http.StatusInternalServerError)
+		errs.WriteError(w, enums.Login, err, "JWT: Transaction commit error", errs.DatabaseError)
 		return
 	}
 
@@ -144,7 +145,7 @@ func (j *JWTAuth) Login(w http.ResponseWriter, r *http.Request) {
 
 	if err := json.NewEncoder(w).Encode(resp); err != nil {
 
-		http.Error(w, "Failed to encode response", http.StatusInternalServerError)
+		errs.WriteError(w, enums.Login, err, "JWT: Failed to encode response", errs.ServerError)
 		return
 	}
 }

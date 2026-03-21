@@ -19,7 +19,7 @@ func Mail(ctx context.Context, mailCfg config.MailConfig, sender Sender, verify 
 
 	if sender.ApiKey == "" {
 
-		return fmt.Errorf("Apikey Empty!")
+		return errors.New("Apikey Empty!")
 	}
 
 	//
@@ -48,7 +48,7 @@ func Mail(ctx context.Context, mailCfg config.MailConfig, sender Sender, verify 
 
 	if err != nil {
 
-		return fmt.Errorf("Function call failed: %v", err)
+		return err
 	}
 
 	// Mail String content Setting
@@ -57,7 +57,7 @@ func Mail(ctx context.Context, mailCfg config.MailConfig, sender Sender, verify 
 
 	if err != nil {
 
-		return fmt.Errorf("HTML component failed: %v", err)
+		return err
 	}
 
 	m.SetHTML(htmlContent)
@@ -71,7 +71,8 @@ func Mail(ctx context.Context, mailCfg config.MailConfig, sender Sender, verify 
 	_, id, err := mg.Send(ctxA, m)
 
 	if err != nil {
-		return fmt.Errorf("Email failed to send: %v", err)
+
+		return fmt.Errorf("Email failed to send: %w", err)
 	}
 
 	fmt.Printf("Mail sent successfully, ID: %s\n", id)

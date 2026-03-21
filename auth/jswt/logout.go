@@ -6,6 +6,7 @@ import (
 	"net/http"
 
 	"github.com/pfilip04/chai/database/postgresql/repository"
+	"github.com/pfilip04/chai/global/enums"
 	"github.com/pfilip04/chai/global/errs"
 )
 
@@ -18,7 +19,7 @@ func (j *JWTAuth) Logout(w http.ResponseWriter, r *http.Request) {
 
 	if err != nil {
 
-		http.Error(w, errs.AuthError.Err.Error(), http.StatusUnauthorized)
+		errs.WriteError(w, enums.Logout, err, "JWT: Problem when Authorizing action", errs.AuthError)
 		return
 	}
 
@@ -32,9 +33,15 @@ func (j *JWTAuth) Logout(w http.ResponseWriter, r *http.Request) {
 
 	rows, err := repo.DeleteJWTSession(ctxA, sessionID)
 
-	if err != nil || rows == 0 {
+	if err != nil {
 
-		http.Error(w, errs.DatabaseError.Err.Error(), errs.DatabaseError.Status)
+		errs.WriteError(w, enums.Logout, err, "JWT: Problem when deleting the session in the db", errs.DatabaseError)
+		return
+	}
+
+	if rows == 0 {
+
+		errs.WriteError(w, enums.Logout, errs.DatabaseError.Err, "JWT: No session deleted from the db", errs.DatabaseError)
 		return
 	}
 

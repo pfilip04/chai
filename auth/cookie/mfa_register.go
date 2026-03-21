@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"github.com/pfilip04/chai/database/postgresql/repository"
+	"github.com/pfilip04/chai/global/enums"
 	"github.com/pfilip04/chai/global/errs"
 )
 
@@ -18,7 +19,7 @@ func (c *CookieAuth) RegisterMfa(w http.ResponseWriter, r *http.Request) {
 
 	if err != nil {
 
-		http.Error(w, errs.AuthError.Err.Error(), errs.AuthError.Status)
+		errs.WriteError(w, enums.RegisterMFA, err, "Cookie: Problem when Authorizing action", errs.AuthError)
 		return
 	}
 
@@ -29,7 +30,7 @@ func (c *CookieAuth) RegisterMfa(w http.ResponseWriter, r *http.Request) {
 
 	if err != nil {
 
-		http.Error(w, errs.DatabaseError.Err.Error(), errs.DatabaseError.Status)
+		errs.WriteError(w, enums.RegisterMFA, err, "Cookie: Transaction start error", errs.ServerError)
 		return
 	}
 
@@ -39,9 +40,15 @@ func (c *CookieAuth) RegisterMfa(w http.ResponseWriter, r *http.Request) {
 
 	rows, err := repo.VerifyEmail(ctxA, userId)
 
-	if err != nil || rows == 0 {
+	if err != nil {
 
-		http.Error(w, errs.DatabaseError.Err.Error(), errs.DatabaseError.Status)
+		errs.WriteError(w, enums.RegisterMFA, err, "Cookie: Couldn't complete the email verification in the db", errs.DatabaseError)
+		return
+	}
+
+	if rows == 0 {
+
+		errs.WriteError(w, enums.RegisterMFA, errs.DatabaseError.Err, "Cookie: No email verified in the db", errs.DatabaseError)
 		return
 	}
 
@@ -50,15 +57,21 @@ func (c *CookieAuth) RegisterMfa(w http.ResponseWriter, r *http.Request) {
 
 	rows, err = repo.ClearMfaSessions(ctxA, userId)
 
-	if err != nil || rows == 0 {
+	if err != nil {
 
-		http.Error(w, errs.DatabaseError.Err.Error(), errs.DatabaseError.Status)
+		errs.WriteError(w, enums.RegisterMFA, err, "Cookie: Couldn't delete mfa token in the db", errs.DatabaseError)
+		return
+	}
+
+	if rows == 0 {
+
+		errs.WriteError(w, enums.RegisterMFA, errs.DatabaseError.Err, "Cookie: No mfa token is deleted from the db", errs.DatabaseError)
 		return
 	}
 
 	if err := tx.Commit(ctxA); err != nil {
 
-		http.Error(w, errs.DatabaseError.Err.Error(), errs.DatabaseError.Status)
+		errs.WriteError(w, enums.RegisterMFA, err, "Cookie: Transaction commit error", errs.DatabaseError)
 		return
 	}
 

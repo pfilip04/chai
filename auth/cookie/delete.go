@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"github.com/pfilip04/chai/database/postgresql/repository"
+	"github.com/pfilip04/chai/global/enums"
 	"github.com/pfilip04/chai/global/errs"
 )
 
@@ -19,7 +20,7 @@ func (c *CookieAuth) Delete(w http.ResponseWriter, r *http.Request) {
 
 	if err != nil {
 
-		http.Error(w, errs.AuthError.Err.Error(), http.StatusUnauthorized)
+		errs.WriteError(w, enums.Delete, err, "Cookie: Problem when Authorizing action", errs.AuthError)
 		return
 	}
 
@@ -30,7 +31,7 @@ func (c *CookieAuth) Delete(w http.ResponseWriter, r *http.Request) {
 
 	if err != nil {
 
-		http.Error(w, errs.DatabaseError.Err.Error(), http.StatusInternalServerError)
+		errs.WriteError(w, enums.Delete, err, "Cookie: Transaction start error", errs.ServerError)
 		return
 	}
 
@@ -45,21 +46,27 @@ func (c *CookieAuth) Delete(w http.ResponseWriter, r *http.Request) {
 
 	if err != nil {
 
-		http.Error(w, errs.DatabaseError.Err.Error(), http.StatusInternalServerError)
+		errs.WriteError(w, enums.Delete, err, "Cookie: Problem when deleting the session in the db", errs.DatabaseError)
 		return
 	}
 
 	rows, err := repo.DeleteUser(ctxA, userID)
 
-	if err != nil || rows == 0 {
+	if err != nil {
 
-		http.Error(w, errs.DatabaseError.Err.Error(), http.StatusInternalServerError)
+		errs.WriteError(w, enums.Delete, err, "Cookie: Problem when deleting the user in the db", errs.DatabaseError)
+		return
+	}
+
+	if rows == 0 {
+
+		errs.WriteError(w, enums.Delete, errs.DatabaseError.Err, "Cookie: No user deleted from the db", errs.DatabaseError)
 		return
 	}
 
 	if err := tx.Commit(ctxA); err != nil {
 
-		http.Error(w, errs.DatabaseError.Err.Error(), http.StatusInternalServerError)
+		errs.WriteError(w, enums.Delete, err, "Cookie: Transaction commit error", errs.DatabaseError)
 		return
 	}
 

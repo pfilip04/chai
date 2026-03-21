@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"github.com/pfilip04/chai/database/postgresql/repository"
+	"github.com/pfilip04/chai/global/enums"
 	"github.com/pfilip04/chai/global/errs"
 )
 
@@ -19,7 +20,7 @@ func (c *CookieAuth) Logout(w http.ResponseWriter, r *http.Request) {
 
 	if err != nil {
 
-		http.Error(w, errs.AuthError.Err.Error(), http.StatusUnauthorized)
+		errs.WriteError(w, enums.Logout, err, "Cookie: Problem when Authorizing action", errs.AuthError)
 		return
 	}
 
@@ -35,7 +36,7 @@ func (c *CookieAuth) Logout(w http.ResponseWriter, r *http.Request) {
 
 	if err != nil {
 
-		http.Error(w, errs.DatabaseError.Err.Error(), http.StatusInternalServerError)
+		errs.WriteError(w, enums.Logout, err, "Cookie: Problem when deleting the session in the db", errs.DatabaseError)
 		return
 	}
 

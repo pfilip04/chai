@@ -27,7 +27,7 @@ func (j *JWTAuth) ForgotPassword(w http.ResponseWriter, r *http.Request) {
 
 	if err != nil {
 
-		http.Error(w, errs.DatabaseError.Err.Error(), http.StatusBadRequest)
+		errs.WriteError(w, enums.ForgotPassword, err, "JWT: Incorrect username or email", errs.AuthError)
 		return
 	}
 
@@ -36,7 +36,7 @@ func (j *JWTAuth) ForgotPassword(w http.ResponseWriter, r *http.Request) {
 
 	if j.sender == nil {
 
-		http.Error(w, "Can't use this feature without mailing true in config", http.StatusConflict)
+		errs.WriteError(w, enums.ForgotPassword, errs.BadRequestError.Err, "JWT: Can't use this feature without mailing true in config", errs.BadRequestError)
 		return
 	}
 
@@ -53,12 +53,12 @@ func (j *JWTAuth) ForgotPassword(w http.ResponseWriter, r *http.Request) {
 		UserEmail: user.Email,
 	}, mailing.MfaType{
 		ApiName:  enums.MfaForgotPassword,
-		MailName: enums.PassReset,
+		MailName: "Password-reset",
 	}, j.sender)
 
 	if err != nil {
 
-		http.Error(w, errs.ServerError.Err.Error(), errs.ServerError.Status)
+		errs.WriteError(w, enums.ForgotPassword, err, "JWT: Problem when sending the mail", errs.ServerError)
 		return
 	}
 

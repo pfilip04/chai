@@ -23,7 +23,7 @@ func (vc *VerificationCode) VerifyCode(w http.ResponseWriter, r *http.Request) {
 
 	if err != nil {
 
-		http.Error(w, "Couldn't get link id", http.StatusBadRequest)
+		errs.WriteError(w, mfaType, err, "Code: Couldn't get user id from the link", errs.BadRequestError)
 		return
 	}
 
@@ -33,7 +33,7 @@ func (vc *VerificationCode) VerifyCode(w http.ResponseWriter, r *http.Request) {
 
 	if err != nil {
 
-		http.Error(w, errs.ServerError.Err.Error(), errs.ServerError.Status)
+		errs.WriteError(w, mfaType, err, "Code: Problem when generating mfa_session_token", errs.ServerError)
 		return
 	}
 
@@ -48,7 +48,7 @@ func (vc *VerificationCode) VerifyCode(w http.ResponseWriter, r *http.Request) {
 
 	if err != nil {
 
-		http.Error(w, errs.DatabaseError.Err.Error(), errs.DatabaseError.Status)
+		errs.WriteError(w, mfaType, err, "Code: Transaction start error", errs.ServerError)
 		return
 	}
 
@@ -66,7 +66,7 @@ func (vc *VerificationCode) VerifyCode(w http.ResponseWriter, r *http.Request) {
 
 	if err != nil {
 
-		http.Error(w, errs.AuthError.Err.Error(), errs.AuthError.Status)
+		errs.WriteDbError(w, mfaType, err, "Code: Problem when consuming verification code", errs.AuthError, errs.DatabaseError)
 		return
 	}
 
@@ -80,13 +80,13 @@ func (vc *VerificationCode) VerifyCode(w http.ResponseWriter, r *http.Request) {
 
 	if err != nil {
 
-		http.Error(w, errs.DatabaseError.Err.Error(), errs.DatabaseError.Status)
+		errs.WriteError(w, mfaType, err, "Code: Problem when inserting mfa_session in the DB", errs.DatabaseError)
 		return
 	}
 
 	if err = tx.Commit(ctxA); err != nil {
 
-		http.Error(w, errs.DatabaseError.Err.Error(), errs.DatabaseError.Status)
+		errs.WriteError(w, mfaType, err, "Code: Transaction commit error", errs.DatabaseError)
 		return
 	}
 

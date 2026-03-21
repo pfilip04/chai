@@ -6,6 +6,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/pfilip04/chai/global/errs"
 	"golang.org/x/time/rate"
 )
 
@@ -34,7 +35,7 @@ func NewRateLimiter(rps int, burst int) func(http.Handler) http.Handler {
 
 			if err != nil {
 
-				http.Error(w, "Internal Server Error", http.StatusInternalServerError)
+				errs.WriteError(w, "rate limiter", err, "Problem when extracting ip", errs.ServerError)
 				return
 			}
 
@@ -64,7 +65,7 @@ func NewRateLimiter(rps int, burst int) func(http.Handler) http.Handler {
 
 			if !c.limiter.Allow() {
 
-				http.Error(w, "Too many requests!", http.StatusTooManyRequests)
+				errs.WriteError(w, "rate limiter", errs.TooManyRequestsError.Err, "Too many requests", errs.TooManyRequestsError)
 				return
 			}
 

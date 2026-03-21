@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"github.com/pfilip04/chai/database/postgresql/repository"
+	"github.com/pfilip04/chai/global/enums"
 	"github.com/pfilip04/chai/global/errs"
 	"github.com/pfilip04/chai/utils"
 )
@@ -16,40 +17,11 @@ func (j *JWTAuth) Refresh(w http.ResponseWriter, r *http.Request) {
 	//
 	// Validating the Refresh Authorization Token
 
-	rf := r.Header.Get("Refresh-Token")
-
-	if rf == "" {
-
-		http.Error(w, errs.AuthError.Err.Error(), http.StatusUnauthorized)
-		return
-	}
-
-	hashedRefreshToken := utils.HashToken(rf)
-
-	ctxA, cancelA := context.WithTimeout(r.Context(), j.queryTimeout)
-	defer cancelA()
-
-	repo := repository.New(j.DB)
-
-	sessionID, err := repo.GetSessionIdByRefresh(ctxA, hashedRefreshToken)
+	userID, sessionID, hashedRefreshToken, err := j.AuthorizeRefresh(r)
 
 	if err != nil {
 
-		http.Error(w, "Couldn't find refresh", http.StatusUnauthorized)
-		return
-	}
-
-	ctxB, cancelB := context.WithTimeout(r.Context(), j.queryTimeout)
-	defer cancelB()
-
-	//
-	// Getting User ID with Session ID to generate the JWT
-
-	userID, err := repo.GetUserIdBySessionId(ctxB, sessionID)
-
-	if err != nil {
-
-		http.Error(w, "Couldn't find userID", http.StatusUnauthorized)
+		errs.WriteError(w, enums.Refresh, err, "JWT: Problem when Authorizing action", errs.AuthError)
 		return
 	}
 
@@ -60,7 +32,7 @@ func (j *JWTAuth) Refresh(w http.ResponseWriter, r *http.Request) {
 
 	if err != nil {
 
-		http.Error(w, "Couldn't generate JWT", http.StatusInternalServerError)
+		errs.WriteError(w, enums.Refresh, err, "JWT: Couldn't generate JWT", errs.ServerError)
 		return
 	}
 
@@ -68,7 +40,7 @@ func (j *JWTAuth) Refresh(w http.ResponseWriter, r *http.Request) {
 
 	if err != nil {
 
-		http.Error(w, "Couldn't generate refresh token", http.StatusInternalServerError)
+		errs.WriteError(w, enums.Refresh, err, "JWT: Couldn't generate refresh token", errs.ServerError)
 		return
 	}
 
@@ -86,13 +58,13 @@ func (j *JWTAuth) Refresh(w http.ResponseWriter, r *http.Request) {
 
 	if err != nil {
 
-		http.Error(w, errs.DatabaseError.Err.Error(), http.StatusInternalServerError)
+		errs.WriteError(w, enums.Refresh, err, "JWT: Transaction start error", errs.ServerError)
 		return
 	}
 
 	defer tx.Rollback(ctxC)
 
-	repo = repository.New(tx)
+	repo := repository.New(tx)
 
 	//
 	// Updating the Session into the DB
@@ -104,12 +76,13 @@ func (j *JWTAuth) Refresh(w http.ResponseWriter, r *http.Request) {
 
 	if err != nil {
 
-		http.Error(w, "Couldn't refresh tokens", http.StatusUnauthorized)
+		errs.WriteError(w, enums.Refresh, err, "JWT: Couldn't update the session in the db", errs.AuthError)
 		return
 	}
 
 	if rows == 0 {
-		http.Error(w, "Couldn't find session", http.StatusUnauthorized)
+
+		errs.WriteError(w, enums.Refresh, errs.DatabaseError.Err, "JWT: No session is updated", errs.DatabaseError)
 		return
 	}
 
@@ -122,18 +95,19 @@ func (j *JWTAuth) Refresh(w http.ResponseWriter, r *http.Request) {
 
 	if err != nil {
 
-		http.Error(w, errs.DatabaseError.Err.Error(), http.StatusInternalServerError)
+		errs.WriteError(w, enums.Refresh, err, "JWT: Couldn't update the refresh in the db", errs.AuthError)
 		return
 	}
 
 	if rows == 0 {
-		http.Error(w, "Invalid or expired refresh token", http.StatusUnauthorized)
+
+		errs.WriteError(w, enums.Refresh, errs.DatabaseError.Err, "JWT: No refresh is updated", errs.DatabaseError)
 		return
 	}
 
 	if err := tx.Commit(ctxC); err != nil {
 
-		http.Error(w, errs.DatabaseError.Err.Error(), http.StatusInternalServerError)
+		errs.WriteError(w, enums.Refresh, err, "JWT: Transaction commit error", errs.DatabaseError)
 		return
 	}
 
@@ -150,7 +124,7 @@ func (j *JWTAuth) Refresh(w http.ResponseWriter, r *http.Request) {
 
 	if err := json.NewEncoder(w).Encode(resp); err != nil {
 
-		http.Error(w, "Failed to encode response", http.StatusInternalServerError)
+		errs.WriteError(w, enums.Refresh, err, "JWT: Failed to encode response", errs.ServerError)
 		return
 	}
 }

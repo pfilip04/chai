@@ -6,7 +6,6 @@ import (
 	"crypto/subtle"
 	"encoding/base64"
 	"encoding/hex"
-	"fmt"
 	"math/big"
 
 	"golang.org/x/crypto/bcrypt"
@@ -36,7 +35,6 @@ func GenerateToken(length int) (string, error) {
 
 	if _, err := rand.Read(bytes); err != nil {
 
-		fmt.Printf("Failed to generate token: %v", err)
 		return "", err
 	}
 

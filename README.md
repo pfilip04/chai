@@ -23,7 +23,6 @@ But watch out for:
 
 ## Future improvements
 
-- Write Error func for cleaner error handling and better global errors
 - Enrichment of contexts for multi-identifier login tracking
 - Creating admin stats, /internal endpoint for /health and /metrics
 - Admin config for admin mode (/internal endpoint)

@@ -57,12 +57,14 @@ func (d *Duration) UnmarshalJSON(b []byte) error {
 	var s string
 
 	if err := json.Unmarshal(b, &s); err != nil {
+
 		return err
 	}
 
 	parsed, err := time.ParseDuration(s)
 
 	if err != nil {
+
 		return err
 	}
 
@@ -101,10 +103,12 @@ func Load[T any](path string) (T, error) {
 	data, err := os.ReadFile(path)
 
 	if err != nil {
+
 		return cfg, err
 	}
 
 	if err := json.Unmarshal(data, &cfg); err != nil {
+
 		return cfg, err
 	}
 

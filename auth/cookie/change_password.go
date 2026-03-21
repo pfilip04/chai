@@ -21,7 +21,7 @@ func (c *CookieAuth) ChangePassword(w http.ResponseWriter, r *http.Request) {
 
 	if err != nil {
 
-		http.Error(w, errs.AuthError.Err.Error(), http.StatusUnauthorized)
+		errs.WriteError(w, enums.ChangePassword, err, "Cookie: Problem when Authorizing action", errs.AuthError)
 		return
 	}
 
@@ -37,7 +37,7 @@ func (c *CookieAuth) ChangePassword(w http.ResponseWriter, r *http.Request) {
 
 	if err != nil {
 
-		http.Error(w, errs.DatabaseError.Err.Error(), http.StatusInternalServerError)
+		errs.WriteError(w, enums.ChangePassword, err, "Cookie: Couldn't get user id by session id from the db", errs.DatabaseError)
 		return
 	}
 
@@ -48,7 +48,7 @@ func (c *CookieAuth) ChangePassword(w http.ResponseWriter, r *http.Request) {
 
 	if err != nil {
 
-		http.Error(w, errs.DatabaseError.Err.Error(), http.StatusInternalServerError)
+		errs.WriteError(w, enums.ChangePassword, err, "Cookie: Couldn't get user by user id from the db", errs.DatabaseError)
 		return
 	}
 
@@ -59,7 +59,7 @@ func (c *CookieAuth) ChangePassword(w http.ResponseWriter, r *http.Request) {
 
 	if !utils.CheckPasswordHash(password, user.PasswordHash) {
 
-		http.Error(w, errs.AuthError.Err.Error(), http.StatusUnauthorized)
+		errs.WriteError(w, enums.ChangePassword, errs.AuthError.Err, "Cookie: Incorrect password", errs.AuthError)
 		return
 	}
 
@@ -81,12 +81,12 @@ func (c *CookieAuth) ChangePassword(w http.ResponseWriter, r *http.Request) {
 			UserEmail: user.Email,
 		}, mailing.MfaType{
 			ApiName:  enums.MfaChangePassword,
-			MailName: enums.PassChange,
+			MailName: "Password-change",
 		}, c.sender)
 
 		if err != nil {
 
-			http.Error(w, errs.ServerError.Err.Error(), errs.ServerError.Status)
+			errs.WriteError(w, enums.ChangePassword, err, "Cookie: Problem when sending the mail", errs.ServerError)
 			return
 		}
 

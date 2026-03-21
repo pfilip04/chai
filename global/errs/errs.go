@@ -5,10 +5,8 @@ import (
 	"net/http"
 )
 
-func WriteError(w http.ResponseWriter, er Err) {
-
-	http.Error(w, er.Err.Error(), er.Status)
-}
+//
+// Global Errors
 
 var (
 	AuthError = Err{
@@ -17,8 +15,8 @@ var (
 	}
 
 	DatabaseError = Err{
-		Err:    errors.New("Database Failed"),
-		Status: http.StatusConflict,
+		Err:    errors.New("Database Error"),
+		Status: http.StatusInternalServerError,
 	}
 
 	ServerError = Err{
@@ -26,13 +24,28 @@ var (
 		Status: http.StatusInternalServerError,
 	}
 
-	LoadError = Err{
-		Err:    errors.New("File Loading Error"),
-		Status: http.StatusInternalServerError,
+	BadRequestError = Err{
+		Err:    errors.New("Bad Request Error"),
+		Status: http.StatusBadRequest,
 	}
 
-	GenerationError = Err{
-		Err:    errors.New("Generation Error"),
-		Status: http.StatusInternalServerError,
+	NotAcceptableError = Err{
+		Err:    errors.New("Not Acceptable Error"),
+		Status: http.StatusNotAcceptable,
+	}
+
+	ConflictError = Err{
+		Err:    errors.New("Conflict Error"),
+		Status: http.StatusConflict,
+	}
+
+	RequestTimeoutError = Err{
+		Err:    errors.New("Request Timeout Error"),
+		Status: http.StatusRequestTimeout,
+	}
+
+	TooManyRequestsError = Err{
+		Err:    errors.New("Too Many Requests Error"),
+		Status: http.StatusTooManyRequests,
 	}
 )

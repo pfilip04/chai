@@ -33,13 +33,13 @@ func (c *CookieAuth) Login(w http.ResponseWriter, r *http.Request) {
 
 	if err != nil {
 
-		http.Error(w, "Invalid username", http.StatusConflict)
+		errs.WriteError(w, enums.Login, err, "Cookie: Incorrect username or email", errs.AuthError)
 		return
 	}
 
 	if !utils.CheckPasswordHash(password, user.PasswordHash) {
 
-		http.Error(w, "Incorrect password", http.StatusConflict)
+		errs.WriteError(w, enums.Login, errs.AuthError.Err, "Cookie: Incorrect password", errs.AuthError)
 		return
 	}
 
@@ -50,7 +50,7 @@ func (c *CookieAuth) Login(w http.ResponseWriter, r *http.Request) {
 
 		if !user.EmailVerified {
 
-			http.Error(w, errs.AuthError.Err.Error(), http.StatusUnauthorized)
+			errs.WriteError(w, enums.Login, errs.AuthError.Err, "Cookie: Email not verified", errs.AuthError)
 			return
 		}
 
@@ -69,12 +69,12 @@ func (c *CookieAuth) Login(w http.ResponseWriter, r *http.Request) {
 				UserEmail: user.Email,
 			}, mailing.MfaType{
 				ApiName:  enums.MfaLoginVerify,
-				MailName: enums.Login,
+				MailName: "Login",
 			}, c.sender)
 
 			if err != nil {
 
-				http.Error(w, errs.ServerError.Err.Error(), errs.ServerError.Status)
+				errs.WriteError(w, enums.Login, err, "Cookie: Problem when sending the mail", errs.ServerError)
 				return
 			}
 
@@ -90,7 +90,7 @@ func (c *CookieAuth) Login(w http.ResponseWriter, r *http.Request) {
 
 	if err != nil {
 
-		http.Error(w, "Couldn't generate session token", http.StatusInternalServerError)
+		errs.WriteError(w, enums.Login, err, "Cookie: Couldn't generate session token", errs.ServerError)
 		return
 	}
 
@@ -98,7 +98,7 @@ func (c *CookieAuth) Login(w http.ResponseWriter, r *http.Request) {
 
 	if err != nil {
 
-		http.Error(w, "Couldn't generate csrf token", http.StatusInternalServerError)
+		errs.WriteError(w, enums.Login, err, "Cookie: Couldn't generate csrf token", errs.ServerError)
 		return
 	}
 
@@ -106,7 +106,7 @@ func (c *CookieAuth) Login(w http.ResponseWriter, r *http.Request) {
 
 	if err != nil {
 
-		http.Error(w, "Couldn't generate refresh token", http.StatusInternalServerError)
+		errs.WriteError(w, enums.Login, err, "Cookie: Couldn't generate refresh token", errs.ServerError)
 		return
 	}
 
@@ -127,7 +127,7 @@ func (c *CookieAuth) Login(w http.ResponseWriter, r *http.Request) {
 
 	if err != nil {
 
-		http.Error(w, errs.DatabaseError.Err.Error(), http.StatusInternalServerError)
+		errs.WriteError(w, enums.Login, err, "Cookie: Transaction start error", errs.ServerError)
 		return
 	}
 
@@ -148,7 +148,7 @@ func (c *CookieAuth) Login(w http.ResponseWriter, r *http.Request) {
 
 	if err != nil {
 
-		http.Error(w, errs.DatabaseError.Err.Error(), http.StatusInternalServerError)
+		errs.WriteError(w, enums.Login, err, "Cookie: Couldn't insert session and csrf tokens into the db", errs.DatabaseError)
 		return
 	}
 
@@ -160,12 +160,13 @@ func (c *CookieAuth) Login(w http.ResponseWriter, r *http.Request) {
 
 	if err != nil {
 
-		http.Error(w, errs.DatabaseError.Err.Error(), http.StatusInternalServerError)
+		errs.WriteError(w, enums.Login, err, "Cookie: Couldn't insert refresh token into the db", errs.DatabaseError)
 		return
 	}
 
 	if err := tx.Commit(ctxE); err != nil {
-		http.Error(w, errs.DatabaseError.Err.Error(), http.StatusInternalServerError)
+
+		errs.WriteError(w, enums.Login, err, "Cookie: Transaction commit error", errs.DatabaseError)
 		return
 	}
 

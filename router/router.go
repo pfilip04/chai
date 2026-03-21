@@ -3,6 +3,7 @@ package router
 import (
 	"context"
 	"errors"
+	"fmt"
 	"log"
 	"os"
 
@@ -10,7 +11,6 @@ import (
 	"github.com/jackc/pgx/v5/pgxpool"
 
 	"github.com/pfilip04/chai/config"
-	"github.com/pfilip04/chai/global/errs"
 	"github.com/pfilip04/chai/mailing"
 )
 
@@ -23,7 +23,7 @@ func NewRouter(ctx context.Context, configurations string) (chi.Router, *pgxpool
 
 	if err != nil {
 
-		return nil, nil, errs.LoadError.Err
+		return nil, nil, fmt.Errorf("Problem when loading main config file: %w", err)
 	}
 
 	//
@@ -31,7 +31,7 @@ func NewRouter(ctx context.Context, configurations string) (chi.Router, *pgxpool
 
 	if err := LoadEnv(cfg.EnvFile); err != nil {
 
-		return nil, nil, errs.LoadError.Err
+		return nil, nil, fmt.Errorf("Problem when loading env file: %w", err)
 	}
 
 	//
@@ -41,7 +41,7 @@ func NewRouter(ctx context.Context, configurations string) (chi.Router, *pgxpool
 
 	if err != nil {
 
-		return nil, nil, err
+		return nil, nil, fmt.Errorf("Problem when connecting to the db: %w", err)
 	}
 
 	log.Println("Database ok")
@@ -53,7 +53,7 @@ func NewRouter(ctx context.Context, configurations string) (chi.Router, *pgxpool
 
 	if secret == "" {
 
-		return nil, nil, errors.New("SECRET_KEY IS NOT SET")
+		return nil, nil, errors.New("secret_key isn't set")
 	}
 
 	//
@@ -75,7 +75,7 @@ func NewRouter(ctx context.Context, configurations string) (chi.Router, *pgxpool
 
 		if err != nil {
 
-			return nil, nil, errs.LoadError.Err
+			return nil, nil, fmt.Errorf("Problem when loading mail config file: %w", err)
 		}
 
 	} else {
@@ -91,7 +91,7 @@ func NewRouter(ctx context.Context, configurations string) (chi.Router, *pgxpool
 
 	if err != nil {
 
-		return nil, nil, errs.LoadError.Err
+		return nil, nil, fmt.Errorf("Problem when loading handler config file: %w", err)
 	}
 
 	//
@@ -101,7 +101,7 @@ func NewRouter(ctx context.Context, configurations string) (chi.Router, *pgxpool
 
 	if err != nil {
 
-		return nil, nil, errs.LoadError.Err
+		return nil, nil, fmt.Errorf("Problem when loading rate limiting config file: %w", err)
 	}
 
 	//
@@ -124,7 +124,7 @@ func NewRouter(ctx context.Context, configurations string) (chi.Router, *pgxpool
 
 	if err != nil {
 
-		return nil, nil, err
+		return nil, nil, fmt.Errorf("Problem when loading cors from env file: %w", err)
 	}
 
 	// Logger
@@ -138,7 +138,7 @@ func NewRouter(ctx context.Context, configurations string) (chi.Router, *pgxpool
 	//
 	// Router init
 
-	router, err := app.NewChiRouter(hcfg.Router, cors.Handler, logger, limiter)
+	router := app.NewChiRouter(hcfg.Router, cors.Handler, logger, limiter)
 
 	return router, dbpool, nil
 }

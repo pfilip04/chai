@@ -11,7 +11,7 @@ import (
 )
 
 func (app *App) NewChiRouter(routercfg config.RouterConfig, cors func(http.Handler) http.Handler,
-	logger func(http.Handler) http.Handler, limiter func(http.Handler) http.Handler) (chi.Router, error) {
+	logger func(http.Handler) http.Handler, limiter func(http.Handler) http.Handler) chi.Router {
 
 	// Chi
 
@@ -24,8 +24,8 @@ func (app *App) NewChiRouter(routercfg config.RouterConfig, cors func(http.Handl
 
 	// Recovering and Logging
 
-	router.Use(middleware.Recoverer)
 	router.Use(logger)
+	router.Use(middleware.Recoverer)
 
 	// Request Timeout and Max Request Size
 
@@ -96,5 +96,5 @@ func (app *App) NewChiRouter(routercfg config.RouterConfig, cors func(http.Handl
 
 	router.Post("/code/{mfa_type}", app.Code.VerifyCode)
 
-	return router, nil
+	return router
 }

@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"github.com/pfilip04/chai/database/postgresql/repository"
+	"github.com/pfilip04/chai/global/enums"
 	"github.com/pfilip04/chai/global/errs"
 	"github.com/pfilip04/chai/utils"
 )
@@ -19,7 +20,7 @@ func (c *CookieAuth) PasswordReset(w http.ResponseWriter, r *http.Request) {
 
 	if err != nil {
 
-		http.Error(w, errs.AuthError.Err.Error(), errs.AuthError.Status)
+		errs.WriteError(w, enums.PasswordReset, err, "Cookie: Problem when Authorizing action", errs.AuthError)
 		return
 	}
 
@@ -32,9 +33,15 @@ func (c *CookieAuth) PasswordReset(w http.ResponseWriter, r *http.Request) {
 	//
 	// Password checking and Hashing
 
-	if newPassword != newPasswordRepeat || !utils.IsValidPassword(newPassword) {
+	if newPassword != newPasswordRepeat {
 
-		http.Error(w, "Invalid password", http.StatusConflict)
+		errs.WriteError(w, enums.PasswordReset, errs.ConflictError.Err, "Cookie: Password missmatch", errs.ConflictError)
+		return
+	}
+
+	if !utils.IsValidPassword(newPassword) {
+
+		errs.WriteError(w, enums.PasswordReset, errs.AuthError.Err, "Cookie: Invalid password", errs.AuthError)
 		return
 	}
 
@@ -42,7 +49,7 @@ func (c *CookieAuth) PasswordReset(w http.ResponseWriter, r *http.Request) {
 
 	if err != nil {
 
-		http.Error(w, errs.ServerError.Err.Error(), errs.ServerError.Status)
+		errs.WriteError(w, enums.PasswordReset, err, "Cookie: Could't hash password", errs.ServerError)
 		return
 	}
 
@@ -53,7 +60,7 @@ func (c *CookieAuth) PasswordReset(w http.ResponseWriter, r *http.Request) {
 
 	if err != nil {
 
-		http.Error(w, errs.DatabaseError.Err.Error(), errs.DatabaseError.Status)
+		errs.WriteError(w, enums.PasswordReset, err, "Cookie: Transaction start error", errs.ServerError)
 		return
 	}
 
@@ -70,9 +77,15 @@ func (c *CookieAuth) PasswordReset(w http.ResponseWriter, r *http.Request) {
 		ID:           userId,
 	})
 
-	if err != nil || rows == 0 {
+	if err != nil {
 
-		http.Error(w, errs.DatabaseError.Err.Error(), errs.DatabaseError.Status)
+		errs.WriteError(w, enums.PasswordReset, err, "Cookie: Problem when updating user password in the db", errs.DatabaseError)
+		return
+	}
+
+	if rows == 0 {
+
+		errs.WriteError(w, enums.PasswordReset, errs.DatabaseError.Err, "Cookie: No user password updated in the db", errs.DatabaseError)
 		return
 	}
 
@@ -81,9 +94,15 @@ func (c *CookieAuth) PasswordReset(w http.ResponseWriter, r *http.Request) {
 
 	rows, err = repo.ClearAllSessions(ctxA, userId)
 
-	if err != nil || rows == 0 {
+	if err != nil {
 
-		http.Error(w, errs.DatabaseError.Err.Error(), errs.DatabaseError.Status)
+		errs.WriteError(w, enums.PasswordReset, err, "Cookie: Couldn't delete all user sessions in the db", errs.DatabaseError)
+		return
+	}
+
+	if rows == 0 {
+
+		errs.WriteError(w, enums.PasswordReset, errs.DatabaseError.Err, "Cookie: No user sessions deleted from the db", errs.DatabaseError)
 		return
 	}
 
@@ -92,15 +111,21 @@ func (c *CookieAuth) PasswordReset(w http.ResponseWriter, r *http.Request) {
 
 	rows, err = repo.ClearMfaSessions(ctxA, userId)
 
-	if err != nil || rows == 0 {
+	if err != nil {
 
-		http.Error(w, errs.DatabaseError.Err.Error(), errs.DatabaseError.Status)
+		errs.WriteError(w, enums.PasswordReset, err, "Cookie: Couldn't delete mfa token in the db", errs.DatabaseError)
+		return
+	}
+
+	if rows == 0 {
+
+		errs.WriteError(w, enums.PasswordReset, errs.DatabaseError.Err, "Cookie: No mfa token is deleted from the db", errs.DatabaseError)
 		return
 	}
 
 	if err := tx.Commit(ctxA); err != nil {
 
-		http.Error(w, errs.DatabaseError.Err.Error(), errs.DatabaseError.Status)
+		errs.WriteError(w, enums.PasswordReset, err, "Cookie: Transaction commit error", errs.DatabaseError)
 		return
 	}
 

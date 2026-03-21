@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"github.com/pfilip04/chai/database/postgresql/repository"
+	"github.com/pfilip04/chai/global/enums"
 	"github.com/pfilip04/chai/global/errs"
 	"github.com/pfilip04/chai/utils"
 )
@@ -16,26 +17,11 @@ func (c *CookieAuth) Refresh(w http.ResponseWriter, r *http.Request) {
 	//
 	// Validating the Refresh Authorization Token
 
-	rf, err := r.Cookie("refresh_token")
-
-	if err != nil || rf.Value == "" {
-
-		http.Error(w, errs.AuthError.Err.Error(), http.StatusUnauthorized)
-		return
-	}
-
-	hashedRefreshToken := utils.HashToken(rf.Value)
-
-	ctxA, cancelA := context.WithTimeout(r.Context(), c.queryTimeout)
-	defer cancelA()
-
-	repo := repository.New(c.DB)
-
-	sessionID, err := repo.GetSessionIdByRefresh(ctxA, hashedRefreshToken)
+	sessionID, hashedRefreshToken, err := c.AuthorizeRefresh(r)
 
 	if err != nil {
 
-		http.Error(w, "Couldn't find refresh", http.StatusUnauthorized)
+		errs.WriteError(w, enums.Refresh, err, "Cookie: Problem when Authorizing action", errs.AuthError)
 		return
 	}
 
@@ -46,7 +32,7 @@ func (c *CookieAuth) Refresh(w http.ResponseWriter, r *http.Request) {
 
 	if err != nil {
 
-		http.Error(w, "Could't generate session token", http.StatusInternalServerError)
+		errs.WriteError(w, enums.Refresh, err, "Cookie: Couldn't generate session token", errs.ServerError)
 		return
 	}
 
@@ -54,7 +40,7 @@ func (c *CookieAuth) Refresh(w http.ResponseWriter, r *http.Request) {
 
 	if err != nil {
 
-		http.Error(w, "Couldn't generate csrf token", http.StatusInternalServerError)
+		errs.WriteError(w, enums.Refresh, err, "Cookie: Couldn't generate csrf token", errs.ServerError)
 		return
 	}
 
@@ -62,7 +48,7 @@ func (c *CookieAuth) Refresh(w http.ResponseWriter, r *http.Request) {
 
 	if err != nil {
 
-		http.Error(w, "Couldn't generate refresh token", http.StatusInternalServerError)
+		errs.WriteError(w, enums.Refresh, err, "Cookie: Couldn't generate refresh token", errs.ServerError)
 		return
 	}
 
@@ -83,13 +69,13 @@ func (c *CookieAuth) Refresh(w http.ResponseWriter, r *http.Request) {
 
 	if err != nil {
 
-		http.Error(w, errs.DatabaseError.Err.Error(), http.StatusInternalServerError)
+		errs.WriteError(w, enums.Refresh, err, "Cookie: Transaction start error", errs.ServerError)
 		return
 	}
 
 	defer tx.Rollback(ctxB)
 
-	repo = repository.New(tx)
+	repo := repository.New(tx)
 
 	//
 	// Updating the Session into the DB
@@ -103,12 +89,13 @@ func (c *CookieAuth) Refresh(w http.ResponseWriter, r *http.Request) {
 
 	if err != nil {
 
-		http.Error(w, "Couldn't refresh tokens", http.StatusUnauthorized)
+		errs.WriteError(w, enums.Refresh, err, "Cookie: Couldn't update the session in the db", errs.AuthError)
 		return
 	}
 
 	if rows == 0 {
-		http.Error(w, "Couldn't find session", http.StatusUnauthorized)
+
+		errs.WriteError(w, enums.Refresh, errs.DatabaseError.Err, "Cookie: No session is updated", errs.DatabaseError)
 		return
 	}
 
@@ -121,18 +108,19 @@ func (c *CookieAuth) Refresh(w http.ResponseWriter, r *http.Request) {
 
 	if err != nil {
 
-		http.Error(w, errs.DatabaseError.Err.Error(), http.StatusInternalServerError)
+		errs.WriteError(w, enums.Refresh, err, "Cookie: Couldn't update the refresh in the db", errs.AuthError)
 		return
 	}
 
 	if rows == 0 {
-		http.Error(w, "Invalid or expired refresh token", http.StatusUnauthorized)
+
+		errs.WriteError(w, enums.Refresh, errs.DatabaseError.Err, "Cookie: No refresh is updated", errs.DatabaseError)
 		return
 	}
 
 	if err := tx.Commit(ctxB); err != nil {
 
-		http.Error(w, errs.DatabaseError.Err.Error(), http.StatusInternalServerError)
+		errs.WriteError(w, enums.Refresh, err, "Cookie: Transaction commit error", errs.DatabaseError)
 		return
 	}
 

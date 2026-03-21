@@ -30,37 +30,37 @@ func (c *CookieAuth) Register(w http.ResponseWriter, r *http.Request) {
 
 	if !utils.IsValidUsername(username) {
 
-		http.Error(w, "Invalid username", http.StatusNotAcceptable)
+		errs.WriteError(w, enums.Register, errs.NotAcceptableError.Err, "Cookie: Invalid username", errs.NotAcceptableError)
 		return
 	}
 
 	if !utils.IsValidPassword(password) {
 
-		http.Error(w, "Invalid password", http.StatusNotAcceptable)
+		errs.WriteError(w, enums.Register, errs.NotAcceptableError.Err, "Cookie: Invalid password", errs.NotAcceptableError)
 		return
 	}
 
 	if !utils.IsValidEmail(email) {
 
-		http.Error(w, "Invalida e-mail", http.StatusNotAcceptable)
+		errs.WriteError(w, enums.Register, errs.NotAcceptableError.Err, "Cookie: Invalid email", errs.NotAcceptableError)
 		return
 	}
 
 	if !utils.CheckUniqueUsername(r, username, c.DB, c.queryTimeout) {
 
-		http.Error(w, "Username taken", http.StatusConflict)
+		errs.WriteError(w, enums.Register, errs.ConflictError.Err, "Cookie: Username uniqueness conflict", errs.ConflictError)
 		return
 	}
 
 	if !utils.CheckUniqueEmail(r, email, c.DB, c.queryTimeout) {
 
-		http.Error(w, "E-mail taken", http.StatusConflict)
+		errs.WriteError(w, enums.Register, errs.ConflictError.Err, "Cookie: Email uniqueness conflict", errs.ConflictError)
 		return
 	}
 
 	if password != password_repeat {
 
-		http.Error(w, "Password missmatch", http.StatusConflict)
+		errs.WriteError(w, enums.Register, errs.ConflictError.Err, "Cookie: Password missmatch", errs.ConflictError)
 		return
 	}
 
@@ -71,7 +71,7 @@ func (c *CookieAuth) Register(w http.ResponseWriter, r *http.Request) {
 
 	if err != nil {
 
-		http.Error(w, "Couldn't hash", http.StatusInternalServerError)
+		errs.WriteError(w, enums.Register, err, "Cookie: Could't hash password", errs.ServerError)
 		return
 	}
 
@@ -79,7 +79,7 @@ func (c *CookieAuth) Register(w http.ResponseWriter, r *http.Request) {
 
 	if err != nil {
 
-		http.Error(w, err.Error(), http.StatusInternalServerError)
+		errs.WriteError(w, enums.Register, err, "Cookie: Couldn't parse mfa to bool", errs.ServerError)
 		return
 	}
 
@@ -100,7 +100,7 @@ func (c *CookieAuth) Register(w http.ResponseWriter, r *http.Request) {
 
 	if err != nil {
 
-		http.Error(w, errs.DatabaseError.Err.Error(), http.StatusInternalServerError)
+		errs.WriteError(w, enums.Register, err, "Cookie: Problem when inserting the user into the db", errs.DatabaseError)
 		return
 	}
 
@@ -122,12 +122,12 @@ func (c *CookieAuth) Register(w http.ResponseWriter, r *http.Request) {
 			UserEmail: email,
 		}, mailing.MfaType{
 			ApiName:  enums.MfaRegVerify,
-			MailName: enums.Reg,
+			MailName: "Register",
 		}, c.sender)
 
 		if err != nil {
 
-			http.Error(w, errs.ServerError.Err.Error(), errs.ServerError.Status)
+			errs.WriteError(w, enums.Register, err, "Cookie: Problem when sending the mail", errs.ServerError)
 			return
 		}
 

@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"github.com/pfilip04/chai/database/postgresql/repository"
+	"github.com/pfilip04/chai/global/enums"
 	"github.com/pfilip04/chai/global/errs"
 	"github.com/pfilip04/chai/utils"
 )
@@ -20,7 +21,7 @@ func (j *JWTAuth) ChangePassword(w http.ResponseWriter, r *http.Request) {
 
 	if err != nil {
 
-		http.Error(w, errs.AuthError.Err.Error(), http.StatusUnauthorized)
+		errs.WriteError(w, enums.ChangePassword, err, "JWT: Problem when Authorizing action", errs.AuthError)
 		return
 	}
 
@@ -28,6 +29,7 @@ func (j *JWTAuth) ChangePassword(w http.ResponseWriter, r *http.Request) {
 	// Extracting Form Values
 
 	password := r.FormValue("old-password")
+
 	newPassword := r.FormValue("new_password")
 	newPasswordRepeat := r.FormValue("new_password_repeat")
 
@@ -41,21 +43,33 @@ func (j *JWTAuth) ChangePassword(w http.ResponseWriter, r *http.Request) {
 
 	user, err := repo.GetUserById(ctxA, userID)
 
+	if err != nil {
+
+		errs.WriteError(w, enums.ChangePassword, err, "JWT: Couldn't get user by user id from the db", errs.DatabaseError)
+		return
+	}
+
 	//
 	// Password Confirmation to procede
 
-	if err != nil || !utils.CheckPasswordHash(password, user.PasswordHash) {
+	if !utils.CheckPasswordHash(password, user.PasswordHash) {
 
-		http.Error(w, errs.AuthError.Err.Error(), http.StatusUnauthorized)
+		errs.WriteError(w, enums.ChangePassword, errs.AuthError.Err, "JWT: Incorrect password", errs.AuthError)
 		return
 	}
 
 	//
 	// New Password checking and Hashing
 
-	if newPassword != newPasswordRepeat || !utils.IsValidPassword(newPassword) {
+	if newPassword != newPasswordRepeat {
 
-		http.Error(w, "Invalid password", http.StatusConflict)
+		errs.WriteError(w, enums.ChangePassword, errs.ConflictError.Err, "JWT: Password missmatch", errs.ConflictError)
+		return
+	}
+
+	if !utils.IsValidPassword(newPassword) {
+
+		errs.WriteError(w, enums.ChangePassword, errs.AuthError.Err, "JWT: Invalid password", errs.AuthError)
 		return
 	}
 
@@ -63,7 +77,7 @@ func (j *JWTAuth) ChangePassword(w http.ResponseWriter, r *http.Request) {
 
 	if err != nil {
 
-		http.Error(w, errs.ServerError.Err.Error(), errs.ServerError.Status)
+		errs.WriteError(w, enums.ChangePassword, err, "JWT: Could't hash password", errs.ServerError)
 		return
 	}
 
@@ -74,7 +88,7 @@ func (j *JWTAuth) ChangePassword(w http.ResponseWriter, r *http.Request) {
 
 	if err != nil {
 
-		http.Error(w, errs.DatabaseError.Err.Error(), errs.DatabaseError.Status)
+		errs.WriteError(w, enums.ChangePassword, err, "JWT: Transaction start error", errs.ServerError)
 		return
 	}
 
@@ -91,9 +105,15 @@ func (j *JWTAuth) ChangePassword(w http.ResponseWriter, r *http.Request) {
 		ID:           userID,
 	})
 
-	if err != nil || rows == 0 {
+	if err != nil {
 
-		http.Error(w, errs.DatabaseError.Err.Error(), errs.DatabaseError.Status)
+		errs.WriteError(w, enums.ChangePassword, err, "JWT: Problem when updating user password in the db", errs.DatabaseError)
+		return
+	}
+
+	if rows == 0 {
+
+		errs.WriteError(w, enums.ChangePassword, errs.DatabaseError.Err, "JWT: No user password updated in the db", errs.DatabaseError)
 		return
 	}
 
@@ -102,15 +122,21 @@ func (j *JWTAuth) ChangePassword(w http.ResponseWriter, r *http.Request) {
 
 	rows, err = repo.ClearAllSessions(ctxB, userID)
 
-	if err != nil || rows == 0 {
+	if err != nil {
 
-		http.Error(w, errs.DatabaseError.Err.Error(), errs.DatabaseError.Status)
+		errs.WriteError(w, enums.ChangePassword, err, "JWT: Couldn't delete all user sessions in the db", errs.DatabaseError)
+		return
+	}
+
+	if rows == 0 {
+
+		errs.WriteError(w, enums.ChangePassword, errs.DatabaseError.Err, "JWT: No user sessions deleted from the db", errs.DatabaseError)
 		return
 	}
 
 	if err := tx.Commit(ctxB); err != nil {
 
-		http.Error(w, errs.DatabaseError.Err.Error(), errs.DatabaseError.Status)
+		errs.WriteError(w, enums.PasswordReset, err, "JWT: Transaction commit error", errs.DatabaseError)
 		return
 	}
 

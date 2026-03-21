@@ -1,10 +1,10 @@
 package router
 
 import (
+	"fmt"
 	"os"
 	"strconv"
 
-	"github.com/pfilip04/chai/global/errs"
 	"github.com/pfilip04/chai/utils"
 	"github.com/rs/cors"
 )
@@ -16,7 +16,7 @@ func NewCors(envFile string) (*cors.Cors, error) {
 
 	if err := LoadEnv(envFile); err != nil {
 
-		return nil, errs.LoadError.Err
+		return nil, fmt.Errorf("Problem when loading env file: %w", err)
 	}
 
 	//
@@ -26,35 +26,35 @@ func NewCors(envFile string) (*cors.Cors, error) {
 
 	if err != nil {
 
-		return nil, errs.LoadError.Err
+		return nil, fmt.Errorf("Problem when loading allowed_origins: %w", err)
 	}
 
 	methods, err := LoadEnvList("ALLOWED_METHODS")
 
 	if err != nil {
 
-		return nil, errs.LoadError.Err
+		return nil, fmt.Errorf("Problem when loading allowed_methods: %w", err)
 	}
 
 	headers, err := LoadEnvList("ALLOWED_HEADERS")
 
 	if err != nil {
 
-		return nil, errs.LoadError.Err
+		return nil, fmt.Errorf("Problem when loading allowed_headers: %w", err)
 	}
 
 	credentials, err := utils.ToBool(os.Getenv("ALLOWED_CREDENTIALS"))
 
 	if err != nil {
 
-		return nil, errs.ServerError.Err
+		return nil, fmt.Errorf("Problem when loading allowed_credentials: %w", err)
 	}
 
 	maxAge, err := strconv.Atoi(os.Getenv("MAX_AGE"))
 
 	if err != nil {
 
-		return nil, errs.ServerError.Err
+		return nil, fmt.Errorf("Problem when loading max_age: %w", err)
 	}
 
 	//

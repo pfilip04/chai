@@ -1,12 +1,12 @@
 package router
 
 import (
+	"errors"
 	"fmt"
 	"os"
 	"strings"
 
 	"github.com/joho/godotenv"
-	"github.com/pfilip04/chai/global/errs"
 )
 
 //
@@ -17,7 +17,7 @@ func LoadEnv(envfile string) error {
 	err := godotenv.Load(envfile)
 
 	if err != nil {
-		return fmt.Errorf("Error loading the .env file: %v", err)
+		return fmt.Errorf("Error loading the .env file: %w", err)
 	}
 
 	return nil
@@ -32,7 +32,7 @@ func LoadEnvList(variableName string) ([]string, error) {
 
 	if origins == "" {
 
-		return []string{}, errs.LoadError.Err
+		return []string{}, errors.New("Env variable can't be empty")
 	}
 
 	list := strings.Split(origins, ",")
