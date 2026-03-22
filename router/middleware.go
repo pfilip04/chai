@@ -71,6 +71,7 @@ func (app *App) NewChiRouter(routercfg config.RouterConfig, cors func(http.Handl
 
 			r.Post("/register", app.Cookie.RegisterMfa)
 			r.Post("/login", app.Cookie.LoginMfa)
+			r.Post("/delete", app.Cookie.DeleteMfa)
 			r.Post("/password-reset", app.Cookie.PasswordReset)
 		})
 	})

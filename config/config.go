@@ -32,11 +32,12 @@ type HandlerConfig struct {
 // Mailing Config File
 
 type MailConfig struct {
-	MailTimeout      Duration `json:"mail-timeout"`         // HOW LONG CAN EMAIL RUN FOR WHILE BEING SENT
-	RegExpiry        Duration `json:"register-mail-expiry"` // HOW LONG UNTIL REGISTER (EMAIL VERIFICATION) CODE EXPIRY
-	MfaLoginExpiry   Duration `json:"mfalogin-mail-expiry"` // HOW LONG UNTIL MFA_LOGIN CODE EXPIRY
-	ChangePassExpiry Duration `json:"changepass-expiry"`    // HOW LONG UNTIL CHANGING PASSWORD CODE EXPIRY
-	ForgotPassExpiry Duration `json:"forgotpass-expiry"`    // HOW LONG UNTIL FORGOT PASSWORD CODE EXPIRY
+	MailTimeout      Duration `json:"mail-timeout"`             // HOW LONG CAN EMAIL RUN FOR WHILE BEING SENT
+	MfaRegExpiry     Duration `json:"mfa-register-mail-expiry"` // HOW LONG UNTIL MFA_REGISTER (EMAIL VERIFICATION) CODE EXPIRY
+	MfaLoginExpiry   Duration `json:"mfa-login-mail-expiry"`    // HOW LONG UNTIL MFA_LOGIN CODE EXPIRY
+	ChangePassExpiry Duration `json:"change-pass-mail-expiry"`  // HOW LONG UNTIL CHANGING PASSWORD CODE EXPIRY
+	ForgotPassExpiry Duration `json:"forgot-pass-mail-expiry"`  // HOW LONG UNTIL FORGOT PASSWORD CODE EXPIRY
+	MfaDeleteExpiry  Duration `json:"mfa-delete-mail-expiry"`   // HOW LONG UNTIL MFA_DELETE CODE EXPIRY
 }
 
 //

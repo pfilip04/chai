@@ -164,17 +164,17 @@ func (q *Queries) CreateUser(ctx context.Context, arg CreateUserParams) (uuid.UU
 	return id, err
 }
 
-const deleteCookieSession = `-- name: DeleteCookieSession :one
+const deleteCookieSession = `-- name: DeleteCookieSession :execrows
 DELETE FROM sessions 
-WHERE id=$1 
-RETURNING user_id
+WHERE id=$1
 `
 
-func (q *Queries) DeleteCookieSession(ctx context.Context, id uuid.UUID) (uuid.UUID, error) {
-	row := q.db.QueryRow(ctx, deleteCookieSession, id)
-	var user_id uuid.UUID
-	err := row.Scan(&user_id)
-	return user_id, err
+func (q *Queries) DeleteCookieSession(ctx context.Context, id uuid.UUID) (int64, error) {
+	result, err := q.db.Exec(ctx, deleteCookieSession, id)
+	if err != nil {
+		return 0, err
+	}
+	return result.RowsAffected(), nil
 }
 
 const deleteJWTSession = `-- name: DeleteJWTSession :execrows

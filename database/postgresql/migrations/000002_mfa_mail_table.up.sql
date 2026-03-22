@@ -1,3 +1,5 @@
+BEGIN;
+
 CREATE TABLE IF NOT EXISTS mfa_mail (
     id                  UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     user_id             UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
@@ -9,7 +11,9 @@ CREATE TABLE IF NOT EXISTS mfa_mail (
 
     created_at          TIMESTAMPTZ NOT NULL DEFAULT now(),
 
-    CONSTRAINT possible_mfa_type CHECK (mfa_type IN ('register-verify', 'mfa-login-verify', 'forgot-password-verify', 'change-password-verify')),
+    CONSTRAINT possible_mfa_type CHECK (
+        mfa_type IN ('register-verify', 'mfa-login-verify', 'forgot-password-verify', 'change-password-verify', 'mfa-delete-verify')
+    ),
     CONSTRAINT uq_user_mfa_type UNIQUE (user_id, mfa_type)
 );
 
@@ -28,3 +32,5 @@ CREATE TABLE IF NOT EXISTS mfa_session (
 
 ALTER TABLE users 
 ADD COLUMN mfa BOOLEAN DEFAULT false;
+
+COMMIT;

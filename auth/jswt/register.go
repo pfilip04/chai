@@ -21,7 +21,7 @@ func (j *JWTAuth) Register(w http.ResponseWriter, r *http.Request) {
 	email := r.FormValue("email")
 
 	password := r.FormValue("password")
-	password_repeat := r.FormValue("password-repeat")
+	passwordRepeat := r.FormValue("password-repeat")
 
 	mfa := r.FormValue("mfa")
 
@@ -58,7 +58,7 @@ func (j *JWTAuth) Register(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if password != password_repeat {
+	if password != passwordRepeat {
 
 		errs.WriteError(w, enums.Register, errs.ConflictError.Err, "JWT: Password missmatch", errs.ConflictError)
 		return
@@ -114,7 +114,7 @@ func (j *JWTAuth) Register(w http.ResponseWriter, r *http.Request) {
 			QueryTimeout: j.queryTimeout,
 			Ctx:          r.Context(),
 		}, mailing.Mailc{
-			MExp:    j.mailingExpiration.RegExpiry,
+			MExp:    j.mailingExpiration.MfaRegExpiry,
 			MailCfg: j.mailingExpiration,
 		}, mailing.User{
 			UserID:    userId,

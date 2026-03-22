@@ -15,6 +15,7 @@ var (
 	RegisterMFA   = "register-mfa"
 	LoginMFA      = "login-mfa"
 	PasswordReset = "password-reset"
+	DeleteMFA     = "delete-mfa"
 )
 
 //
@@ -25,4 +26,5 @@ var (
 	MfaLoginVerify    = "mfa-login-verify"
 	MfaForgotPassword = "forgot-password-verify"
 	MfaChangePassword = "change-password-verify"
+	MfaDeleteVerify   = "mfa-delete-verify"
 )

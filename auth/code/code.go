@@ -66,7 +66,7 @@ func (vc *VerificationCode) VerifyCode(w http.ResponseWriter, r *http.Request) {
 
 	if err != nil {
 
-		errs.WriteDbError(w, mfaType, err, "Code: Problem when consuming verification code", errs.AuthError, errs.DatabaseError)
+		errs.WriteError(w, mfaType, err, "Code: Problem when consuming verification code", errs.DatabaseError)
 		return
 	}
 

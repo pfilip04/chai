@@ -25,10 +25,9 @@ RETURNING id;
 INSERT INTO refresh_tokens (session_id, refresh_token, expires_at) 
 VALUES ($1, $2, $3);
 
--- name: DeleteCookieSession :one
+-- name: DeleteCookieSession :execrows
 DELETE FROM sessions 
-WHERE id=$1 
-RETURNING user_id;
+WHERE id=$1;
 
 -- name: DeleteJWTSession :execrows
 DELETE FROM sessions 

@@ -9,6 +9,8 @@ import (
 	"github.com/pfilip04/chai/database/postgresql/repository"
 	"github.com/pfilip04/chai/global/enums"
 	"github.com/pfilip04/chai/global/errs"
+	"github.com/pfilip04/chai/mailing"
+	"github.com/pfilip04/chai/utils"
 )
 
 func (c *CookieAuth) Delete(w http.ResponseWriter, r *http.Request) {
@@ -27,30 +29,86 @@ func (c *CookieAuth) Delete(w http.ResponseWriter, r *http.Request) {
 	ctxA, cancelA := context.WithTimeout(r.Context(), c.queryTimeout)
 	defer cancelA()
 
-	tx, err := c.DB.Begin(ctxA)
-
-	if err != nil {
-
-		errs.WriteError(w, enums.Delete, err, "Cookie: Transaction start error", errs.ServerError)
-		return
-	}
-
-	defer tx.Rollback(ctxA)
-
-	repo := repository.New(tx)
+	repo := repository.New(c.DB)
 
 	//
-	// Deleting the Session, CSRF and Refresh Tokens alongside the User Account from the DB
+	// Finding the User in the DB
 
-	userID, err := repo.DeleteCookieSession(ctxA, sessionID)
+	userID, err := repo.GetUserIdBySessionId(ctxA, sessionID)
 
 	if err != nil {
 
-		errs.WriteError(w, enums.Delete, err, "Cookie: Problem when deleting the session in the db", errs.DatabaseError)
+		errs.WriteError(w, enums.Delete, err, "Cookie: Couldn't get user id by session id from the db", errs.DatabaseError)
 		return
 	}
 
-	rows, err := repo.DeleteUser(ctxA, userID)
+	ctxB, cancelB := context.WithTimeout(r.Context(), c.queryTimeout)
+	defer cancelB()
+
+	user, err := repo.GetUserById(ctxB, userID)
+
+	if err != nil {
+
+		errs.WriteError(w, enums.Delete, err, "Cookie: Couldn't get user by user id from the db", errs.DatabaseError)
+		return
+	}
+
+	//
+	// Password Confirmation to procede
+
+	password := r.FormValue("password")
+	passwordRepeat := r.FormValue("password-repeat")
+
+	if password != passwordRepeat {
+
+		errs.WriteError(w, enums.Delete, errs.ConflictError.Err, "Cookie: Password missmatch", errs.ConflictError)
+		return
+	}
+
+	if !utils.CheckPasswordHash(password, user.PasswordHash) {
+
+		errs.WriteError(w, enums.Delete, errs.AuthError.Err, "Cookie: Incorrect password", errs.AuthError)
+		return
+	}
+
+	//
+	// Sending the mail
+
+	if c.sender != nil && user.Mfa {
+
+		message, err := mailing.SendMail(mailing.DbQuerying{
+			Repo:         repo,
+			QueryTimeout: c.queryTimeout,
+			Ctx:          r.Context(),
+		}, mailing.Mailc{
+			MExp:    c.mailingExpiration.MfaDeleteExpiry,
+			MailCfg: c.mailingExpiration,
+		}, mailing.User{
+			UserID:    userID,
+			Username:  user.Username,
+			UserEmail: user.Email,
+		}, mailing.MfaType{
+			ApiName:  enums.MfaDeleteVerify,
+			MailName: "Delete",
+		}, c.sender)
+
+		if err != nil {
+
+			errs.WriteError(w, enums.Delete, err, "Cookie: Problem when sending the mail", errs.ServerError)
+			return
+		}
+
+		fmt.Fprintln(w, message)
+		return
+	}
+
+	//
+	// Deleting the User Account from the DB, that cascades to all session and refresh_tokens being deleted too
+
+	ctxC, cancelC := context.WithTimeout(r.Context(), c.queryTimeout)
+	defer cancelC()
+
+	rows, err := repo.DeleteUser(ctxC, userID)
 
 	if err != nil {
 
@@ -61,12 +119,6 @@ func (c *CookieAuth) Delete(w http.ResponseWriter, r *http.Request) {
 	if rows == 0 {
 
 		errs.WriteError(w, enums.Delete, errs.DatabaseError.Err, "Cookie: No user deleted from the db", errs.DatabaseError)
-		return
-	}
-
-	if err := tx.Commit(ctxA); err != nil {
-
-		errs.WriteError(w, enums.Delete, err, "Cookie: Transaction commit error", errs.DatabaseError)
 		return
 	}
 

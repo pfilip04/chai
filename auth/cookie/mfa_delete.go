@@ -11,43 +11,53 @@ import (
 	"github.com/pfilip04/chai/global/errs"
 )
 
-func (c *CookieAuth) Logout(w http.ResponseWriter, r *http.Request) {
+func (c *CookieAuth) DeleteMfa(w http.ResponseWriter, r *http.Request) {
 
 	//
-	// Validating the User Authorization Tokens
+	// Validating the MFA Authorization Token
 
-	sessionID, err := c.Authorize(r)
+	userID, err := c.MfaAuthorize(r)
 
 	if err != nil {
 
-		errs.WriteError(w, enums.Logout, err, "Cookie: Problem when Authorizing action", errs.AuthError)
+		errs.WriteError(w, enums.DeleteMFA, err, "Cookie: Problem when Authorizing action", errs.AuthError)
 		return
 	}
 
 	//
-	// Clearing the Session, CSRF and Refresh Tokens in the DB
+	// Deleting the User Account from the DB, that cascades to all session and refresh_tokens as well as mfa tables being deleted too
 
 	ctxA, cancelA := context.WithTimeout(r.Context(), c.queryTimeout)
 	defer cancelA()
 
 	repo := repository.New(c.DB)
 
-	rows, err := repo.DeleteCookieSession(ctxA, sessionID)
+	rows, err := repo.DeleteUser(ctxA, userID)
 
 	if err != nil {
 
-		errs.WriteError(w, enums.Logout, err, "Cookie: Problem when deleting the session in the db", errs.DatabaseError)
+		errs.WriteError(w, enums.DeleteMFA, err, "Cookie: Problem when deleting the user in the db", errs.DatabaseError)
 		return
 	}
 
 	if rows == 0 {
 
-		errs.WriteError(w, enums.Logout, errs.DatabaseError.Err, "Cookie: No session deleted", errs.DatabaseError)
+		errs.WriteError(w, enums.DeleteMFA, errs.DatabaseError.Err, "Cookie: No user deleted from the db", errs.DatabaseError)
 		return
 	}
 
 	//
 	// Clearing the Cookies
+
+	http.SetCookie(w, &http.Cookie{
+		Name:     "mfa_session_token",
+		Value:    "",
+		Expires:  time.Now().UTC().Add(-time.Hour),
+		HttpOnly: true,
+		Secure:   true,
+		SameSite: http.SameSiteStrictMode,
+		Path:     "/",
+	})
 
 	http.SetCookie(w, &http.Cookie{
 		Name:     "session_token",
@@ -79,5 +89,5 @@ func (c *CookieAuth) Logout(w http.ResponseWriter, r *http.Request) {
 		Path:     "/",
 	})
 
-	fmt.Fprintln(w, "User logout successful")
+	fmt.Fprintln(w, "User account deletion successful")
 }

@@ -54,4 +54,8 @@ type User struct {
 	CreatedAt     time.Time `json:"created_at"`
 	UpdatedAt     time.Time `json:"updated_at"`
 	Mfa           bool      `json:"mfa"`
+	IsSuperuser   bool      `json:"is_superuser"`
+	Status        string    `json:"status"`
+	DeletedAt     time.Time `json:"deleted_at"`
+	SuspendedAt   time.Time `json:"suspended_at"`
 }

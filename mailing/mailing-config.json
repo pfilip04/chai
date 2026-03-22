@@ -1,11 +1,13 @@
 {
     "mail-timeout": "30m",
 
-    "register-mail-expiry": "15m",
+    "mfa-register-mail-expiry": "15m",
 
-    "mfalogin-mail-expiry": "5m",
+    "mfa-login-mail-expiry": "5m",
 
-    "changepass-expiry": "8m",
+    "change-pass-mail-expiry": "8m",
 
-    "forgotpass-expiry": "3m"
+    "forgot-pass-mail-expiry": "3m",
+
+    "mfa-delete-mail-expiry": "3m"
 }
