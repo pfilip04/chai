@@ -1,5 +1,7 @@
 {
     "rps": 10,
 
-    "burst": 20
+    "burst": 20,
+
+    "ip-cache-lifetime": "10m"
 }

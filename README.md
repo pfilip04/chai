@@ -23,7 +23,6 @@ But watch out for:
 
 ## Future improvements
 
-- Enrichment of contexts for multi-identifier login tracking
 - Creating admin stats, /internal endpoint for /health and /metrics
 - Admin config for admin mode (/internal endpoint)
 - Test package for automatic testing

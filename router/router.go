@@ -6,12 +6,14 @@ import (
 	"fmt"
 	"log"
 	"os"
+	"time"
 
 	"github.com/go-chi/chi/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
 
 	"github.com/pfilip04/chai/config"
 	"github.com/pfilip04/chai/mailing"
+	"github.com/pfilip04/chai/router/middlewares"
 )
 
 func NewRouter(ctx context.Context, configurations string) (chi.Router, *pgxpool.Pool, error) {
@@ -116,6 +118,25 @@ func NewRouter(ctx context.Context, configurations string) (chi.Router, *pgxpool
 	app.InitCode(hcfg.Code, hcfg.MfaExp)
 
 	//
+	// First Admin User
+
+	if cfg.Admin {
+
+		admin_username := os.Getenv("ADMIN_USERNAME")
+		admin_password := os.Getenv("ADMIN_PASSWORD")
+		admin_email := os.Getenv("ADMIN_EMAIL")
+
+		message, err := InitAdminAccount(ctx, dbpool, admin_username, admin_email, admin_password)
+
+		if err != nil {
+
+			return nil, nil, fmt.Errorf("Problem when creating the initial admin user: %w", err)
+		}
+
+		log.Println(message)
+	}
+
+	//
 	// Global Cors, Logger and Rate Limiter instances
 
 	// Cors
@@ -129,16 +150,16 @@ func NewRouter(ctx context.Context, configurations string) (chi.Router, *pgxpool
 
 	// Logger
 
-	logger := SlogMiddleware(NewLogger())
+	logger := middlewares.SlogMiddleware(middlewares.NewLogger())
 
 	// Limiter
 
-	limiter := NewRateLimiter(rlcfg.Rps, rlcfg.Burst)
+	limiter := middlewares.NewRateLimiter(rlcfg.Rps, rlcfg.Burst, time.Duration(rlcfg.Lifetime))
 
 	//
 	// Router init
 
-	router := app.NewChiRouter(hcfg.Router, cors.Handler, logger, limiter)
+	router := app.NewChiRouter(hcfg.Router, cors.Handler, logger, limiter.InitRateLimiter())
 
 	return router, dbpool, nil
 }

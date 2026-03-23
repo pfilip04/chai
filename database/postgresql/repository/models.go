@@ -46,16 +46,17 @@ type Session struct {
 }
 
 type User struct {
-	ID            uuid.UUID `json:"id"`
-	Username      string    `json:"username"`
-	Email         string    `json:"email"`
-	PasswordHash  string    `json:"password_hash"`
-	EmailVerified bool      `json:"email_verified"`
-	CreatedAt     time.Time `json:"created_at"`
-	UpdatedAt     time.Time `json:"updated_at"`
-	Mfa           bool      `json:"mfa"`
-	IsSuperuser   bool      `json:"is_superuser"`
-	Status        string    `json:"status"`
-	DeletedAt     time.Time `json:"deleted_at"`
-	SuspendedAt   time.Time `json:"suspended_at"`
+	ID            uuid.UUID     `json:"id"`
+	Username      string        `json:"username"`
+	Email         string        `json:"email"`
+	PasswordHash  string        `json:"password_hash"`
+	CreatedAt     time.Time     `json:"created_at"`
+	UpdatedAt     time.Time     `json:"updated_at"`
+	Mfa           bool          `json:"mfa"`
+	EmailVerified bool          `json:"email_verified"`
+	IsSuperuser   bool          `json:"is_superuser"`
+	Status        string        `json:"status"`
+	DeletedAt     time.Time     `json:"deleted_at"`
+	SuspendedAt   time.Time     `json:"suspended_at"`
+	SuspendedFor  time.Duration `json:"suspended_for"`
 }

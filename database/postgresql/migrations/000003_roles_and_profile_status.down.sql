@@ -7,6 +7,7 @@ DROP CONSTRAINT IF EXISTS status_suspended,
 DROP COLUMN IF EXISTS is_superuser, 
 DROP COLUMN IF EXISTS status, 
 DROP COLUMN IF EXISTS deleted_at, 
-DROP COLUMN IF EXISTS suspended_at;
+DROP COLUMN IF EXISTS suspended_at, 
+DROP COLUMN IF EXISTS suspended_for;
 
 COMMIT;

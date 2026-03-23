@@ -1,9 +1,9 @@
 package enums
 
 //
-// These enums are for logging
+// These enums are for LOGGING
 
-var (
+const (
 	Register       = "register"
 	Login          = "login"
 	Logout         = "logout"
@@ -21,10 +21,20 @@ var (
 //
 // These enums are for IDENTIFYING MFA_TYPE in the program logic and DB
 
-var (
+const (
 	MfaRegVerify      = "register-verify"
 	MfaLoginVerify    = "mfa-login-verify"
 	MfaForgotPassword = "forgot-password-verify"
 	MfaChangePassword = "change-password-verify"
 	MfaDeleteVerify   = "mfa-delete-verify"
+)
+
+//
+// These enums are for EXTRACTING IDENTIFIERS
+
+const (
+	CtxUsernameEmail   = "username-email"
+	CtxSessionToken    = "session-token"
+	CtxMfaSessionToken = "mfa-session-token"
+	CtxJWT             = "authorization-jwt"
 )

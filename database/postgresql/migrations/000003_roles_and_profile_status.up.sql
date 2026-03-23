@@ -5,6 +5,7 @@ ADD COLUMN is_superuser BOOLEAN DEFAULT false,
 ADD COLUMN status TEXT NOT NULL DEFAULT 'active', 
 ADD COLUMN deleted_at TIMESTAMPTZ DEFAULT NULL, 
 ADD COLUMN suspended_at TIMESTAMPTZ DEFAULT NULL, 
+ADD COLUMN suspended_for INTERVAL DEFAULT NULL, 
 ADD CONSTRAINT possible_status CHECK (
     status IN ('active', 'suspended', 'deleted')
 ), 

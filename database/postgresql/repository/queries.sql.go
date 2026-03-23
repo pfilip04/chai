@@ -93,6 +93,26 @@ func (q *Queries) CountUsername(ctx context.Context, username string) (int64, er
 	return count, err
 }
 
+const createFirstSuperuser = `-- name: CreateFirstSuperuser :execrows
+INSERT INTO users (username, email, password_hash, is_superuser, mfa, email_verified) 
+VALUES ($1, $2, $3, true, true, true)
+ON CONFLICT DO NOTHING
+`
+
+type CreateFirstSuperuserParams struct {
+	Username     string `json:"username"`
+	Email        string `json:"email"`
+	PasswordHash string `json:"password_hash"`
+}
+
+func (q *Queries) CreateFirstSuperuser(ctx context.Context, arg CreateFirstSuperuserParams) (int64, error) {
+	result, err := q.db.Exec(ctx, createFirstSuperuser, arg.Username, arg.Email, arg.PasswordHash)
+	if err != nil {
+		return 0, err
+	}
+	return result.RowsAffected(), nil
+}
+
 const createMfaMail = `-- name: CreateMfaMail :one
 INSERT INTO mfa_mail (user_id, mfa_type, code, expires_at) 
 VALUES ($1, $2, $3, $4) 

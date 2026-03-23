@@ -50,3 +50,14 @@ sql:
           nullable: false
           go_type:
             type: "bool"
+
+        - db_type: "pg_catalog.interval"
+          nullable: true
+          go_type:
+            import: "time"
+            type: "Duration"
+        - db_type: "pg_catalog.interval"
+          nullable: false
+          go_type:
+            import: "time"
+            type: "Duration"

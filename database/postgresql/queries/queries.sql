@@ -3,6 +3,11 @@ INSERT INTO users (username, email, password_hash, mfa)
 VALUES ($1, $2, $3, $4) 
 RETURNING id;
 
+-- name: CreateFirstSuperuser :execrows
+INSERT INTO users (username, email, password_hash, is_superuser, mfa, email_verified) 
+VALUES ($1, $2, $3, true, true, true)
+ON CONFLICT DO NOTHING;
+
 -- name: GetUserByUsernameOrEmail :one
 SELECT id, username, email, password_hash, email_verified, mfa FROM users 
 WHERE username=$1 OR email=$1;

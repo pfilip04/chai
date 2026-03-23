@@ -3,7 +3,9 @@
 
     "redis": false,
 
-    "mailing-config": "mailing/mailing-config.json",
+    "admin": true,
+
+    "mailing-config": "",
 
     "handler-config": "config/handler-config.json",
 

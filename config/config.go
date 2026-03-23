@@ -12,6 +12,7 @@ import (
 type Config struct {
 	EnvFile      string `json:"env"`               // ENV FILE NAME
 	RedisCache   bool   `json:"redis"`             // true OR false FOR USING REDIS CACHING
+	Admin        bool   `json:"admin"`             // true OR false FOR ADMIN FEATURES
 	MailingCfg   string `json:"mailing-config"`    // ADDRESS OF THE MAILING CONFIG FILE (RELATIVE TO PROJECT ROOT) - LEAVE EMPTY TO DISABLE MAILING
 	HandlerCfg   string `json:"handler-config"`    // ADDRESS OF THE HANDLER CONFIG FILE (RELATIVE TO PROJECT ROOT)
 	RateLimitCfg string `json:"rate-limit-config"` // ADDRESS OF THE RATE LIMITING CONFIG FILE (RELATIVE TO PROJECT ROOT)
@@ -44,8 +45,9 @@ type MailConfig struct {
 // Rate Limiting Config File
 
 type RateLimitConfig struct {
-	Rps   int `json:"rps"`   // RATE PER SECOND (HOW MANY TOKENS ARE ADDED TO THE BUCKET EVERY SECOND - REFILL RATE)
-	Burst int `json:"burst"` // BUCKET CAPACITY (MAXIMUM NUMBER OF TOKENS THE BUCKET CAN HOLD AT ANY GIVEN MOMENT - MAX)
+	Rps      int      `json:"rps"`               // RATE PER SECOND (HOW MANY TOKENS ARE ADDED TO THE BUCKET EVERY SECOND - REFILL RATE)
+	Burst    int      `json:"burst"`             // BUCKET CAPACITY (MAXIMUM NUMBER OF TOKENS THE BUCKET CAN HOLD AT ANY GIVEN MOMENT - MAX)
+	Lifetime Duration `json:"ip-cache-lifetime"` // HOW LONG DOES IP GET CACHED IN MEMORY FOR RATE LIMIT TRACKING
 }
 
 //

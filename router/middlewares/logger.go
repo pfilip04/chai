@@ -1,4 +1,4 @@
-package router
+package middlewares
 
 import (
 	"log/slog"

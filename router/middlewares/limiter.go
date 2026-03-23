@@ -1,9 +1,8 @@
-package router
+package middlewares
 
 import (
 	"net"
 	"net/http"
-	"sync"
 	"time"
 
 	"github.com/pfilip04/chai/global/errs"
@@ -11,19 +10,22 @@ import (
 )
 
 //
-// Client struct for tracking requests and last-seen for cleanup
+// Rate Limiter Constructor
 
-type client struct {
-	limiter    *rate.Limiter
-	lastSeenAt time.Time
+func NewRateLimiter(rps int, burst int, lifetime time.Duration) *RateLimiter {
+
+	rl := &RateLimiter{
+		clients: make(map[string]*client),
+		rps:     rps,
+		burst:   burst,
+	}
+
+	go rl.cleanup(lifetime)
+
+	return rl
 }
 
-func NewRateLimiter(rps int, burst int) func(http.Handler) http.Handler {
-
-	// Mutex for safe access and the map of client structs
-
-	var mu sync.RWMutex
-	var clients = make(map[string]*client)
+func (rl *RateLimiter) InitRateLimiter() func(http.Handler) http.Handler {
 
 	return func(next http.Handler) http.Handler {
 
@@ -39,27 +41,27 @@ func NewRateLimiter(rps int, burst int) func(http.Handler) http.Handler {
 				return
 			}
 
-			mu.RLock()
-			c, ok := clients[ip]
-			mu.RUnlock()
+			rl.mu.RLock()
+			c, ok := rl.clients[ip]
+			rl.mu.RUnlock()
 
 			if !ok {
 
-				mu.Lock()
-				c, ok = clients[ip]
+				rl.mu.Lock()
+				c, ok = rl.clients[ip]
 				if !ok {
 
 					c = &client{
-						limiter: rate.NewLimiter(rate.Limit(rps), burst),
+						limiter: rate.NewLimiter(rate.Limit(rl.rps), rl.burst),
 					}
-					clients[ip] = c
+					rl.clients[ip] = c
 				}
-				mu.Unlock()
+				rl.mu.Unlock()
 			}
 
-			mu.Lock()
+			rl.mu.Lock()
 			c.lastSeenAt = time.Now().UTC()
-			mu.Unlock()
+			rl.mu.Unlock()
 
 			// Check the limiter status
 
