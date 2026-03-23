@@ -23,11 +23,11 @@ But watch out for:
 
 ## Future improvements
 
-- Creating admin stats, /internal endpoint for /health and /metrics
-- Admin config for admin mode (/internal endpoint)
-- Test package for automatic testing
+- Creating admin actions, /internal endpoint for /health and /metrics
+- Identifier in-memory caching and rate limiting per user
 - Global cleanup (in-memory and db)
-- Adding Redis*
+- Test package for automatic testing
+- Adding Redis
 
 ## Run it
 
