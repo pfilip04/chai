@@ -23,7 +23,7 @@ But watch out for:
 
 ## Future improvements
 
-- Creating admin actions, /internal endpoint for /health and /metrics
+- Finishing admin actions, /internal endpoint for /health and /metrics
 - Identifier in-memory caching and rate limiting per user
 - Global cleanup (in-memory and db)
 - Test package for automatic testing

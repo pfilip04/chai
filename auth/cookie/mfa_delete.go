@@ -20,7 +20,7 @@ func (c *CookieAuth) DeleteMfa(w http.ResponseWriter, r *http.Request) {
 
 	if err != nil {
 
-		errs.WriteError(w, enums.DeleteMFA, err, "Cookie: Problem when Authorizing action", errs.AuthError)
+		errs.WriteError(w, enums.MFADelete, err, "Cookie: Problem when Authorizing action", errs.AuthError)
 		return
 	}
 
@@ -36,13 +36,13 @@ func (c *CookieAuth) DeleteMfa(w http.ResponseWriter, r *http.Request) {
 
 	if err != nil {
 
-		errs.WriteError(w, enums.DeleteMFA, err, "Cookie: Problem when deleting the user in the db", errs.DatabaseError)
+		errs.WriteError(w, enums.MFADelete, err, "Cookie: Problem when deleting the user in the db", errs.DatabaseError)
 		return
 	}
 
 	if rows == 0 {
 
-		errs.WriteError(w, enums.DeleteMFA, errs.DatabaseError.Err, "Cookie: No user deleted from the db", errs.DatabaseError)
+		errs.WriteError(w, enums.MFADelete, errs.DatabaseError.Err, "Cookie: No user deleted from the db", errs.DatabaseError)
 		return
 	}
 

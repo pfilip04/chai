@@ -21,7 +21,7 @@ func (c *CookieAuth) LoginMfa(w http.ResponseWriter, r *http.Request) {
 
 	if err != nil {
 
-		errs.WriteError(w, enums.LoginMFA, err, "Cookie: Problem when Authorizing action", errs.AuthError)
+		errs.WriteError(w, enums.MFALogin, err, "Cookie: Problem when Authorizing action", errs.AuthError)
 		return
 	}
 
@@ -32,7 +32,7 @@ func (c *CookieAuth) LoginMfa(w http.ResponseWriter, r *http.Request) {
 
 	if err != nil {
 
-		errs.WriteError(w, enums.LoginMFA, err, "Cookie: Couldn't generate session token", errs.ServerError)
+		errs.WriteError(w, enums.MFALogin, err, "Cookie: Couldn't generate session token", errs.ServerError)
 		return
 	}
 
@@ -40,7 +40,7 @@ func (c *CookieAuth) LoginMfa(w http.ResponseWriter, r *http.Request) {
 
 	if err != nil {
 
-		errs.WriteError(w, enums.LoginMFA, err, "Cookie: Couldn't generate csrf token", errs.ServerError)
+		errs.WriteError(w, enums.MFALogin, err, "Cookie: Couldn't generate csrf token", errs.ServerError)
 		return
 	}
 
@@ -48,7 +48,7 @@ func (c *CookieAuth) LoginMfa(w http.ResponseWriter, r *http.Request) {
 
 	if err != nil {
 
-		errs.WriteError(w, enums.LoginMFA, err, "Cookie: Couldn't generate refresh token", errs.ServerError)
+		errs.WriteError(w, enums.MFALogin, err, "Cookie: Couldn't generate refresh token", errs.ServerError)
 		return
 	}
 
@@ -69,7 +69,7 @@ func (c *CookieAuth) LoginMfa(w http.ResponseWriter, r *http.Request) {
 
 	if err != nil {
 
-		errs.WriteError(w, enums.LoginMFA, err, "Cookie: Transaction start error", errs.ServerError)
+		errs.WriteError(w, enums.MFALogin, err, "Cookie: Transaction start error", errs.ServerError)
 		return
 	}
 
@@ -90,7 +90,7 @@ func (c *CookieAuth) LoginMfa(w http.ResponseWriter, r *http.Request) {
 
 	if err != nil {
 
-		errs.WriteError(w, enums.LoginMFA, err, "Cookie: Couldn't insert session and csrf tokens into the db", errs.DatabaseError)
+		errs.WriteError(w, enums.MFALogin, err, "Cookie: Couldn't insert session and csrf tokens into the db", errs.DatabaseError)
 		return
 	}
 
@@ -102,7 +102,7 @@ func (c *CookieAuth) LoginMfa(w http.ResponseWriter, r *http.Request) {
 
 	if err != nil {
 
-		errs.WriteError(w, enums.LoginMFA, err, "Cookie: Couldn't insert refresh token into the db", errs.DatabaseError)
+		errs.WriteError(w, enums.MFALogin, err, "Cookie: Couldn't insert refresh token into the db", errs.DatabaseError)
 		return
 	}
 
@@ -113,19 +113,19 @@ func (c *CookieAuth) LoginMfa(w http.ResponseWriter, r *http.Request) {
 
 	if err != nil {
 
-		errs.WriteError(w, enums.LoginMFA, err, "Cookie: Couldn't delete mfa token in the db", errs.DatabaseError)
+		errs.WriteError(w, enums.MFALogin, err, "Cookie: Couldn't delete mfa token in the db", errs.DatabaseError)
 		return
 	}
 
 	if rows == 0 {
 
-		errs.WriteError(w, enums.LoginMFA, errs.DatabaseError.Err, "Cookie: No mfa token is deleted from the db", errs.DatabaseError)
+		errs.WriteError(w, enums.MFALogin, errs.DatabaseError.Err, "Cookie: No mfa token is deleted from the db", errs.DatabaseError)
 		return
 	}
 
 	if err := tx.Commit(ctxA); err != nil {
 
-		errs.WriteError(w, enums.LoginMFA, err, "Cookie: Transaction commit error", errs.DatabaseError)
+		errs.WriteError(w, enums.MFALogin, err, "Cookie: Transaction commit error", errs.DatabaseError)
 		return
 	}
 

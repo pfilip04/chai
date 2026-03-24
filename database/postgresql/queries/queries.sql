@@ -119,9 +119,18 @@ WHERE user_id=$1;
 
 -- name: VerifyEmail :execrows
 UPDATE users 
-SET email_verified=TRUE, updated_at=NOW() 
+SET email_verified=true, updated_at=NOW() 
 WHERE id=$1;
 
 -- name: ClearAllSessions :execrows
 DELETE FROM sessions 
 WHERE user_id=$1;
+
+-- name: GetSuperuserStatus :one
+SELECT is_superuser from users 
+WHERE id=$1;
+
+-- name: PromoteSuperuser :execrows
+UPDATE users 
+SET is_superuser=true, updated_at=NOW() 
+WHERE id=$1;

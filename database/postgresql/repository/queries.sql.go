@@ -270,6 +270,18 @@ func (q *Queries) GetSessionIdByRefresh(ctx context.Context, refreshToken string
 	return session_id, err
 }
 
+const getSuperuserStatus = `-- name: GetSuperuserStatus :one
+SELECT is_superuser from users 
+WHERE id=$1
+`
+
+func (q *Queries) GetSuperuserStatus(ctx context.Context, id uuid.UUID) (bool, error) {
+	row := q.db.QueryRow(ctx, getSuperuserStatus, id)
+	var is_superuser bool
+	err := row.Scan(&is_superuser)
+	return is_superuser, err
+}
+
 const getUserById = `-- name: GetUserById :one
 SELECT username, email, password_hash, mfa FROM users 
 WHERE id=$1
@@ -408,6 +420,20 @@ func (q *Queries) InsertRefreshToken(ctx context.Context, arg InsertRefreshToken
 	return err
 }
 
+const promoteSuperuser = `-- name: PromoteSuperuser :execrows
+UPDATE users 
+SET is_superuser=true, updated_at=NOW() 
+WHERE id=$1
+`
+
+func (q *Queries) PromoteSuperuser(ctx context.Context, id uuid.UUID) (int64, error) {
+	result, err := q.db.Exec(ctx, promoteSuperuser, id)
+	if err != nil {
+		return 0, err
+	}
+	return result.RowsAffected(), nil
+}
+
 const updateCookieSession = `-- name: UpdateCookieSession :execrows
 UPDATE sessions 
 SET session_token=$1, csrf_token=$2, expires_at=$3 
@@ -501,7 +527,7 @@ func (q *Queries) UpdateUserPassword(ctx context.Context, arg UpdateUserPassword
 
 const verifyEmail = `-- name: VerifyEmail :execrows
 UPDATE users 
-SET email_verified=TRUE, updated_at=NOW() 
+SET email_verified=true, updated_at=NOW() 
 WHERE id=$1
 `
 

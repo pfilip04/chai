@@ -25,27 +25,32 @@ var (
 	}
 
 	BadRequestError = Err{
-		Err:    errors.New("Bad Request Error"),
+		Err:    errors.New("Bad Request"),
 		Status: http.StatusBadRequest,
 	}
 
 	NotAcceptableError = Err{
-		Err:    errors.New("Not Acceptable Error"),
+		Err:    errors.New("Not Acceptable"),
 		Status: http.StatusNotAcceptable,
 	}
 
+	ForbiddenError = Err{
+		Err:    errors.New("Forbidden"),
+		Status: http.StatusForbidden,
+	}
+
 	ConflictError = Err{
-		Err:    errors.New("Conflict Error"),
+		Err:    errors.New("Conflict"),
 		Status: http.StatusConflict,
 	}
 
 	RequestTimeoutError = Err{
-		Err:    errors.New("Request Timeout Error"),
+		Err:    errors.New("Request Timeout"),
 		Status: http.StatusRequestTimeout,
 	}
 
 	TooManyRequestsError = Err{
-		Err:    errors.New("Too Many Requests Error"),
+		Err:    errors.New("Too Many Requests"),
 		Status: http.StatusTooManyRequests,
 	}
 )

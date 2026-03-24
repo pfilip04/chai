@@ -1,9 +1,17 @@
 package utils
 
 import (
+	"context"
 	"errors"
+	"fmt"
+	"net/http"
 	"net/mail"
 	"strings"
+	"time"
+
+	"github.com/google/uuid"
+	"github.com/jackc/pgx/v5/pgxpool"
+	"github.com/pfilip04/chai/database/postgresql/repository"
 )
 
 //
@@ -109,4 +117,24 @@ func ToBool(p string) (bool, error) {
 	}
 
 	return false, errors.New("Couldn't parse to bool")
+}
+
+//
+// Checks if the user with forwarded user id is superuser
+
+func IsAdmin(r *http.Request, userId uuid.UUID, db *pgxpool.Pool, timeout time.Duration) (bool, error) {
+
+	ctxA, cancelA := context.WithTimeout(r.Context(), timeout)
+	defer cancelA()
+
+	repo := repository.New(db)
+
+	superuser, err := repo.GetSuperuserStatus(ctxA, userId)
+
+	if err != nil {
+
+		return false, fmt.Errorf("Problem when fetching superuser status from the db: %w", err)
+	}
+
+	return superuser, nil
 }

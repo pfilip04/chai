@@ -12,10 +12,14 @@ const (
 	ForgotPassword = "forgot-password"
 	ChangePassword = "change-password"
 
-	RegisterMFA   = "register-mfa"
-	LoginMFA      = "login-mfa"
+	MFARegister   = "register-mfa"
+	MFALogin      = "login-mfa"
 	PasswordReset = "password-reset"
-	DeleteMFA     = "delete-mfa"
+	MFADelete     = "delete-mfa"
+
+	AdminPromote  = "admin-promote"
+	AdminRestrict = "admin-restrict"
+	AdminDelete   = "admin-delete"
 )
 
 //
