@@ -9,7 +9,7 @@ VALUES ($1, $2, $3, true, true, true)
 ON CONFLICT DO NOTHING;
 
 -- name: GetUserByUsernameOrEmail :one
-SELECT id, username, email, password_hash, email_verified, mfa FROM users 
+SELECT id, username, email, password_hash, email_verified, status, suspended_at, suspended_for, deleted_at, mfa FROM users 
 WHERE username=$1 OR email=$1;
 
 -- name: GetUserById :one
@@ -38,8 +38,18 @@ WHERE id=$1;
 DELETE FROM sessions 
 WHERE id=$1;
 
--- name: DeleteUser :execrows
+-- name: HardDeleteUser :execrows
 DELETE FROM users 
+WHERE id=$1;
+
+-- name: SoftDeleteUser :execrows
+UPDATE users 
+SET status='deleted', deleted_at=NOW() 
+WHERE id=$1;
+
+-- name: SuspendUser :execrows
+UPDATE users 
+SET status='suspended', suspended_at=NOW(), suspended_for=$2 
 WHERE id=$1;
 
 -- name: GetUserIdBySession :one
@@ -133,4 +143,9 @@ WHERE id=$1;
 -- name: PromoteSuperuser :execrows
 UPDATE users 
 SET is_superuser=true, updated_at=NOW() 
+WHERE id=$1;
+
+-- name: ReviveUser :execrows
+UPDATE users 
+SET status='active', deleted_at=NULL, suspended_at=NULL, suspended_for=NULL 
 WHERE id=$1;

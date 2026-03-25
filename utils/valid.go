@@ -12,6 +12,7 @@ import (
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/pfilip04/chai/database/postgresql/repository"
+	"github.com/pfilip04/chai/global/errs"
 )
 
 //
@@ -137,4 +138,84 @@ func IsAdmin(r *http.Request, userId uuid.UUID, db *pgxpool.Pool, timeout time.D
 	}
 
 	return superuser, nil
+}
+
+func IsValidStatus(r *http.Request, userId uuid.UUID, status string, suspAt time.Time, suspFor time.Duration,
+	delAt time.Time, db *pgxpool.Pool, timeout time.Duration) error {
+
+	if status == "active" {
+
+		return nil
+	}
+
+	ctx, cancel := context.WithTimeout(r.Context(), timeout)
+	defer cancel()
+
+	repo := repository.New(db)
+
+	switch status {
+
+	case "suspended":
+
+		elapsed := time.Since(suspAt)
+
+		if elapsed > suspFor {
+
+			rows, err := repo.ReviveUser(ctx, userId)
+
+			if err != nil {
+
+				return fmt.Errorf("Couldn't unrestrict user: %w", err)
+			}
+
+			if rows == 0 {
+
+				return errors.New("No users unrestricted")
+			}
+
+			return nil
+		}
+
+		return errs.ForbiddenError.Err
+
+	case "deleted":
+
+		elapsed := time.Since(delAt)
+		window := 30 * 24 * time.Hour
+
+		if elapsed <= window {
+
+			rows, err := repo.ReviveUser(ctx, userId)
+
+			if err != nil {
+
+				return fmt.Errorf("Couldn't revive user: %w", err)
+			}
+
+			if rows == 0 {
+
+				return errors.New("No users revived")
+			}
+
+			return nil
+		}
+
+		rows, err := repo.HardDeleteUser(ctx, userId)
+
+		if err != nil {
+
+			return fmt.Errorf("Couldn't delete user: %w", err)
+		}
+
+		if rows == 0 {
+
+			return errors.New("No users deleted")
+		}
+
+		return errs.ForbiddenError.Err
+
+	default:
+
+		return fmt.Errorf("Unknown status: %s", status)
+	}
 }

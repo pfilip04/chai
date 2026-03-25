@@ -43,6 +43,12 @@ func (c *CookieAuth) Login(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	if err = utils.IsValidStatus(r, user.ID, user.Status, user.SuspendedAt, user.SuspendedFor, user.DeletedAt, c.DB, c.queryTimeout); err != nil {
+
+		errs.WriteError(w, enums.Login, err, "Cookie: Problem validating status", errs.ForbiddenError)
+		return
+	}
+
 	//
 	// If Mailing was specified in the JSON check if the Email is Verified and if the User opted for MFA then Send Mail
 

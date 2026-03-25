@@ -45,24 +45,48 @@ func (c *CookieAuth) AdminDelete(w http.ResponseWriter, r *http.Request) {
 	}
 
 	//
-	// Deleting the other User Account from the DB
+	// Deleting the target User Account from the DB
 
 	ctxA, cancelA := context.WithTimeout(r.Context(), c.queryTimeout)
 	defer cancelA()
 
-	repo := repository.New(c.DB)
-
-	rows, err := repo.DeleteUser(ctxA, userId)
+	tx, err := c.DB.Begin(ctxA)
 
 	if err != nil {
 
-		errs.WriteError(w, enums.AdminDelete, err, "Cookie: Problem when deleting the target user in the db", errs.DatabaseError)
+		errs.WriteError(w, enums.AdminDelete, err, "Cookie: Transaction start error", errs.ServerError)
+		return
+	}
+
+	defer tx.Rollback(ctxA)
+
+	repo := repository.New(tx)
+
+	_, err = repo.ClearAllSessions(ctxA, userId)
+
+	if err != nil {
+
+		errs.WriteError(w, enums.AdminDelete, err, "Cookie: Problem when clearing all target user sessions", errs.DatabaseError)
+		return
+	}
+
+	rows, err := repo.SoftDeleteUser(ctxA, userId)
+
+	if err != nil {
+
+		errs.WriteError(w, enums.AdminDelete, err, "Cookie: Problem when soft deleting the target user in the db", errs.DatabaseError)
 		return
 	}
 
 	if rows == 0 {
 
-		errs.WriteError(w, enums.AdminDelete, errs.DatabaseError.Err, "Cookie: No user deleted from the db", errs.DatabaseError)
+		errs.WriteError(w, enums.AdminDelete, errs.DatabaseError.Err, "Cookie: No user soft deleted from the db", errs.DatabaseError)
+		return
+	}
+
+	if err := tx.Commit(ctxA); err != nil {
+
+		errs.WriteError(w, enums.AdminDelete, err, "Cookie: Transaction commit error", errs.DatabaseError)
 		return
 	}
 

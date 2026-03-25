@@ -108,17 +108,49 @@ func (c *CookieAuth) Delete(w http.ResponseWriter, r *http.Request) {
 	ctxC, cancelC := context.WithTimeout(r.Context(), c.queryTimeout)
 	defer cancelC()
 
-	rows, err := repo.DeleteUser(ctxC, userID)
+	tx, err := c.DB.Begin(ctxC)
 
 	if err != nil {
 
-		errs.WriteError(w, enums.Delete, err, "Cookie: Problem when deleting the user in the db", errs.DatabaseError)
+		errs.WriteError(w, enums.Delete, err, "Cookie: Transaction start error", errs.ServerError)
+		return
+	}
+
+	defer tx.Rollback(ctxC)
+
+	repo = repository.New(tx)
+
+	rows, err := repo.ClearAllSessions(ctxC, userID)
+
+	if err != nil {
+
+		errs.WriteError(w, enums.Delete, err, "Cookie: Problem when clearing all user sessions", errs.DatabaseError)
 		return
 	}
 
 	if rows == 0 {
 
-		errs.WriteError(w, enums.Delete, errs.DatabaseError.Err, "Cookie: No user deleted from the db", errs.DatabaseError)
+		errs.WriteError(w, enums.Delete, errs.DatabaseError.Err, "Cookie: No user sessions deleted from the db", errs.DatabaseError)
+		return
+	}
+
+	rows, err = repo.SoftDeleteUser(ctxC, userID)
+
+	if err != nil {
+
+		errs.WriteError(w, enums.Delete, err, "Cookie: Problem when soft deleting the user in the db", errs.DatabaseError)
+		return
+	}
+
+	if rows == 0 {
+
+		errs.WriteError(w, enums.Delete, errs.DatabaseError.Err, "Cookie: No user soft deleted from the db", errs.DatabaseError)
+		return
+	}
+
+	if err := tx.Commit(ctxC); err != nil {
+
+		errs.WriteError(w, enums.Delete, err, "Cookie: Transaction commit error", errs.DatabaseError)
 		return
 	}
 

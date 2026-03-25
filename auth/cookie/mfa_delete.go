@@ -30,9 +30,33 @@ func (c *CookieAuth) DeleteMfa(w http.ResponseWriter, r *http.Request) {
 	ctxA, cancelA := context.WithTimeout(r.Context(), c.queryTimeout)
 	defer cancelA()
 
-	repo := repository.New(c.DB)
+	tx, err := c.DB.Begin(ctxA)
 
-	rows, err := repo.DeleteUser(ctxA, userID)
+	if err != nil {
+
+		errs.WriteError(w, enums.MFADelete, err, "Cookie: Transaction start error", errs.ServerError)
+		return
+	}
+
+	defer tx.Rollback(ctxA)
+
+	repo := repository.New(tx)
+
+	rows, err := repo.ClearAllSessions(ctxA, userID)
+
+	if err != nil {
+
+		errs.WriteError(w, enums.MFADelete, err, "Cookie: Problem when clearing all user sessions", errs.DatabaseError)
+		return
+	}
+
+	if rows == 0 {
+
+		errs.WriteError(w, enums.MFADelete, errs.DatabaseError.Err, "Cookie: No user sessions deleted from the db", errs.DatabaseError)
+		return
+	}
+
+	rows, err = repo.SoftDeleteUser(ctxA, userID)
 
 	if err != nil {
 
@@ -43,6 +67,26 @@ func (c *CookieAuth) DeleteMfa(w http.ResponseWriter, r *http.Request) {
 	if rows == 0 {
 
 		errs.WriteError(w, enums.MFADelete, errs.DatabaseError.Err, "Cookie: No user deleted from the db", errs.DatabaseError)
+		return
+	}
+
+	rows, err = repo.ClearMfaSessions(ctxA, userID)
+
+	if err != nil {
+
+		errs.WriteError(w, enums.MFADelete, err, "Cookie: Couldn't delete mfa token in the db", errs.DatabaseError)
+		return
+	}
+
+	if rows == 0 {
+
+		errs.WriteError(w, enums.MFADelete, errs.DatabaseError.Err, "Cookie: No mfa token is deleted from the db", errs.DatabaseError)
+		return
+	}
+
+	if err := tx.Commit(ctxA); err != nil {
+
+		errs.WriteError(w, enums.MFADelete, err, "Cookie: Transaction commit error", errs.DatabaseError)
 		return
 	}
 

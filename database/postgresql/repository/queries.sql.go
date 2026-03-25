@@ -210,19 +210,6 @@ func (q *Queries) DeleteJWTSession(ctx context.Context, id uuid.UUID) (int64, er
 	return result.RowsAffected(), nil
 }
 
-const deleteUser = `-- name: DeleteUser :execrows
-DELETE FROM users 
-WHERE id=$1
-`
-
-func (q *Queries) DeleteUser(ctx context.Context, id uuid.UUID) (int64, error) {
-	result, err := q.db.Exec(ctx, deleteUser, id)
-	if err != nil {
-		return 0, err
-	}
-	return result.RowsAffected(), nil
-}
-
 const findUserByUsernameOrEmail = `-- name: FindUserByUsernameOrEmail :one
 SELECT id, username, email FROM users 
 WHERE username=$1 OR email=$1
@@ -307,17 +294,21 @@ func (q *Queries) GetUserById(ctx context.Context, id uuid.UUID) (GetUserByIdRow
 }
 
 const getUserByUsernameOrEmail = `-- name: GetUserByUsernameOrEmail :one
-SELECT id, username, email, password_hash, email_verified, mfa FROM users 
+SELECT id, username, email, password_hash, email_verified, status, suspended_at, suspended_for, deleted_at, mfa FROM users 
 WHERE username=$1 OR email=$1
 `
 
 type GetUserByUsernameOrEmailRow struct {
-	ID            uuid.UUID `json:"id"`
-	Username      string    `json:"username"`
-	Email         string    `json:"email"`
-	PasswordHash  string    `json:"password_hash"`
-	EmailVerified bool      `json:"email_verified"`
-	Mfa           bool      `json:"mfa"`
+	ID            uuid.UUID     `json:"id"`
+	Username      string        `json:"username"`
+	Email         string        `json:"email"`
+	PasswordHash  string        `json:"password_hash"`
+	EmailVerified bool          `json:"email_verified"`
+	Status        string        `json:"status"`
+	SuspendedAt   time.Time     `json:"suspended_at"`
+	SuspendedFor  time.Duration `json:"suspended_for"`
+	DeletedAt     time.Time     `json:"deleted_at"`
+	Mfa           bool          `json:"mfa"`
 }
 
 func (q *Queries) GetUserByUsernameOrEmail(ctx context.Context, username string) (GetUserByUsernameOrEmailRow, error) {
@@ -329,6 +320,10 @@ func (q *Queries) GetUserByUsernameOrEmail(ctx context.Context, username string)
 		&i.Email,
 		&i.PasswordHash,
 		&i.EmailVerified,
+		&i.Status,
+		&i.SuspendedAt,
+		&i.SuspendedFor,
+		&i.DeletedAt,
 		&i.Mfa,
 	)
 	return i, err
@@ -356,6 +351,19 @@ func (q *Queries) GetUserIdBySessionId(ctx context.Context, id uuid.UUID) (uuid.
 	var user_id uuid.UUID
 	err := row.Scan(&user_id)
 	return user_id, err
+}
+
+const hardDeleteUser = `-- name: HardDeleteUser :execrows
+DELETE FROM users 
+WHERE id=$1
+`
+
+func (q *Queries) HardDeleteUser(ctx context.Context, id uuid.UUID) (int64, error) {
+	result, err := q.db.Exec(ctx, hardDeleteUser, id)
+	if err != nil {
+		return 0, err
+	}
+	return result.RowsAffected(), nil
 }
 
 const insertCookieSession = `-- name: InsertCookieSession :one
@@ -428,6 +436,53 @@ WHERE id=$1
 
 func (q *Queries) PromoteSuperuser(ctx context.Context, id uuid.UUID) (int64, error) {
 	result, err := q.db.Exec(ctx, promoteSuperuser, id)
+	if err != nil {
+		return 0, err
+	}
+	return result.RowsAffected(), nil
+}
+
+const reviveUser = `-- name: ReviveUser :execrows
+UPDATE users 
+SET status='active', deleted_at=NULL, suspended_at=NULL, suspended_for=NULL 
+WHERE id=$1
+`
+
+func (q *Queries) ReviveUser(ctx context.Context, id uuid.UUID) (int64, error) {
+	result, err := q.db.Exec(ctx, reviveUser, id)
+	if err != nil {
+		return 0, err
+	}
+	return result.RowsAffected(), nil
+}
+
+const softDeleteUser = `-- name: SoftDeleteUser :execrows
+UPDATE users 
+SET status='deleted', deleted_at=NOW() 
+WHERE id=$1
+`
+
+func (q *Queries) SoftDeleteUser(ctx context.Context, id uuid.UUID) (int64, error) {
+	result, err := q.db.Exec(ctx, softDeleteUser, id)
+	if err != nil {
+		return 0, err
+	}
+	return result.RowsAffected(), nil
+}
+
+const suspendUser = `-- name: SuspendUser :execrows
+UPDATE users 
+SET status='suspended', suspended_at=NOW(), suspended_for=$2 
+WHERE id=$1
+`
+
+type SuspendUserParams struct {
+	ID           uuid.UUID     `json:"id"`
+	SuspendedFor time.Duration `json:"suspended_for"`
+}
+
+func (q *Queries) SuspendUser(ctx context.Context, arg SuspendUserParams) (int64, error) {
+	result, err := q.db.Exec(ctx, suspendUser, arg.ID, arg.SuspendedFor)
 	if err != nil {
 		return 0, err
 	}

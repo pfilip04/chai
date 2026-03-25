@@ -45,7 +45,7 @@ func (c *CookieAuth) AdminPromote(w http.ResponseWriter, r *http.Request) {
 	}
 
 	//
-	// Deleting the other User Account from the DB
+	// Promoting the target User Account in the DB
 
 	ctxA, cancelA := context.WithTimeout(r.Context(), c.queryTimeout)
 	defer cancelA()

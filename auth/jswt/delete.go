@@ -96,7 +96,33 @@ func (j *JWTAuth) Delete(w http.ResponseWriter, r *http.Request) {
 	ctxB, cancelB := context.WithTimeout(r.Context(), j.queryTimeout)
 	defer cancelB()
 
-	rows, err := repo.DeleteUser(ctxB, userID)
+	tx, err := j.DB.Begin(ctxB)
+
+	if err != nil {
+
+		errs.WriteError(w, enums.Delete, err, "JWT: Transaction start error", errs.ServerError)
+		return
+	}
+
+	defer tx.Rollback(ctxB)
+
+	repo = repository.New(tx)
+
+	rows, err := repo.ClearAllSessions(ctxB, userID)
+
+	if err != nil {
+
+		errs.WriteError(w, enums.Delete, err, "JWT: Problem when clearing all user sessions", errs.DatabaseError)
+		return
+	}
+
+	if rows == 0 {
+
+		errs.WriteError(w, enums.Delete, errs.DatabaseError.Err, "JWT: No user sessions deleted from the db", errs.DatabaseError)
+		return
+	}
+
+	rows, err = repo.SoftDeleteUser(ctxB, userID)
 
 	if err != nil {
 
@@ -107,6 +133,12 @@ func (j *JWTAuth) Delete(w http.ResponseWriter, r *http.Request) {
 	if rows == 0 {
 
 		errs.WriteError(w, enums.Delete, errs.DatabaseError.Err, "JWT: No user deleted from the db", errs.DatabaseError)
+		return
+	}
+
+	if err := tx.Commit(ctxB); err != nil {
+
+		errs.WriteError(w, enums.Delete, err, "JWT: Transaction commit error", errs.DatabaseError)
 		return
 	}
 

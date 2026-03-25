@@ -42,6 +42,12 @@ func (j *JWTAuth) Login(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	if err = utils.IsValidStatus(r, user.ID, user.Status, user.SuspendedAt, user.SuspendedFor, user.DeletedAt, j.DB, j.queryTimeout); err != nil {
+
+		errs.WriteError(w, enums.Login, err, "Cookie: Problem validating status", errs.ForbiddenError)
+		return
+	}
+
 	//
 	// If Mailing was specified in the JSON check if the Email is Verified, no MFA Login for mobile (JWT)
 
