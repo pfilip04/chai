@@ -14,14 +14,6 @@ import (
 
 func (c *CookieAuth) AdminPromote(w http.ResponseWriter, r *http.Request) {
 
-	_, err := c.AdminAuthorize(r)
-
-	if err != nil {
-
-		errs.WriteError(w, enums.AdminPromote, err, "Cookie: Problem when authorizing admin action", errs.ForbiddenError)
-		return
-	}
-
 	userId, err := uuid.Parse(r.URL.Query().Get("id"))
 
 	if err != nil {

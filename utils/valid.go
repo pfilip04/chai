@@ -140,6 +140,10 @@ func IsAdmin(r *http.Request, userId uuid.UUID, db *pgxpool.Pool, timeout time.D
 	return superuser, nil
 }
 
+//
+// Checks the status of the user and handles them
+// (active -> okay ; suspended -> ok if suspension is over else forbidden ; delete -> ok if within 30 days else hard delete)
+
 func IsValidStatus(r *http.Request, userId uuid.UUID, status string, suspAt time.Time, suspFor time.Duration,
 	delAt time.Time, db *pgxpool.Pool, timeout time.Duration) error {
 

@@ -17,9 +17,14 @@ const (
 	PasswordReset = "password-reset"
 	MFADelete     = "delete-mfa"
 
-	AdminPromote  = "admin-promote"
-	AdminRestrict = "admin-restrict"
-	AdminDelete   = "admin-delete"
+	AdminPromote = "admin-promote"
+	AdminSuspend = "admin-suspend"
+	AdminDelete  = "admin-delete"
+
+	AdminOnly = "admin-only"
+
+	HealthLive    = "health-live"
+	HealthStartup = "health-startup"
 )
 
 //

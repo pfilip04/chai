@@ -51,6 +51,33 @@ func (app *App) NewChiRouter(routercfg config.RouterConfig, cors func(http.Handl
 	//
 	// Api URLs
 
+	// Admin Apis
+
+	router.Route("/admin", func(r chi.Router) {
+
+		r.Use(app.Cookie.AdminOnly)
+
+		r.Post("/promote", app.Cookie.AdminPromote)
+		r.Post("/suspend", app.Cookie.AdminSuspend)
+		r.Post("/delete", app.Cookie.Logout)
+	})
+
+	// Internal Apis
+
+	router.Route("/internal", func(r chi.Router) {
+
+		r.Use(app.Cookie.AdminOnly)
+
+		// Health Apis
+
+		r.Route("/health", func(r chi.Router) {
+
+			r.Get("/live", app.Live)
+			r.Get("/ready", app.Ready)
+			r.Get("/startup", app.Startup)
+		})
+	})
+
 	// Web Apis
 
 	router.Route("/web", func(r chi.Router) {

@@ -14,14 +14,6 @@ import (
 
 func (c *CookieAuth) AdminDelete(w http.ResponseWriter, r *http.Request) {
 
-	_, err := c.AdminAuthorize(r)
-
-	if err != nil {
-
-		errs.WriteError(w, enums.AdminDelete, err, "Cookie: Problem when authorizing admin action", errs.ForbiddenError)
-		return
-	}
-
 	userId, err := uuid.Parse(r.URL.Query().Get("id"))
 
 	if err != nil {
