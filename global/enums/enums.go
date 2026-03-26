@@ -42,8 +42,10 @@ const (
 // These enums are for EXTRACTING IDENTIFIERS
 
 const (
-	CtxUsernameEmail   = "username-email"
-	CtxSessionToken    = "session-token"
-	CtxMfaSessionToken = "mfa-session-token"
-	CtxJWT             = "authorization-jwt"
+	CtxUsernameEmail      = "username-email"
+	CtxSessionToken       = "session-token"
+	CtxCookieRefreshToken = "cookie-refresh-token"
+	CtxJWTRefreshToken    = "jwt-refresh-token"
+	CtxMfaSessionToken    = "mfa-session-token"
+	CtxJWT                = "authorization-jwt"
 )

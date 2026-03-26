@@ -1,8 +1,8 @@
-package middlewares
+package limitr
 
 import "time"
 
-func (rl *RateLimiter) cleanup(lifetime time.Duration) {
+func (rl *RateLimiter) LimiterCleanup(lifetime time.Duration) {
 
 	for {
 

@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"log"
+	"log/slog"
 	"os"
 	"time"
 
@@ -12,8 +13,9 @@ import (
 	"github.com/jackc/pgx/v5/pgxpool"
 
 	"github.com/pfilip04/chai/config"
+	"github.com/pfilip04/chai/global/limitr"
+	"github.com/pfilip04/chai/global/loggr"
 	"github.com/pfilip04/chai/mailing"
-	"github.com/pfilip04/chai/router/middlewares"
 )
 
 func NewRouter(ctx context.Context, configurations string) (chi.Router, *pgxpool.Pool, error) {
@@ -141,25 +143,27 @@ func NewRouter(ctx context.Context, configurations string) (chi.Router, *pgxpool
 
 	// Cors
 
-	cors, err := NewCors(cfg.EnvFile)
+	c, err := NewCors(cfg.EnvFile)
 
 	if err != nil {
 
 		return nil, nil, fmt.Errorf("Problem when loading cors from env file: %w", err)
 	}
 
+	cors := c.Handler
+
 	// Logger
 
-	logger := middlewares.SlogMiddleware(middlewares.NewLogger())
+	logger := loggr.SlogMiddleware(loggr.NewLogger(slog.LevelInfo))
 
 	// Limiter
 
-	limiter := middlewares.NewRateLimiter(rlcfg.Rps, rlcfg.Burst, time.Duration(rlcfg.Lifetime))
+	limiter := limitr.NewRateLimiter(rlcfg.Rps, rlcfg.Burst, time.Duration(rlcfg.Lifetime)).InitRateLimiter()
 
 	//
 	// Router init
 
-	router := app.NewChiRouter(hcfg.Router, cors.Handler, logger, limiter.InitRateLimiter())
+	router := app.NewChiRouter(hcfg.Router, cors, logger, limiter)
 
 	return router, dbpool, nil
 }

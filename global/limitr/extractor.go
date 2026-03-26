@@ -1,4 +1,4 @@
-package middlewares
+package limitr
 
 import (
 	"context"
@@ -23,7 +23,9 @@ func CheckForJwt(r *http.Request, name string) bool {
 func IdentityExtractor(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 
-		if r.URL.Path == "/web/login" || r.URL.Path == "/mobile/login" {
+		path := r.URL.Path
+
+		if path == "/web/login" || path == "/mobile/login" {
 
 			if err := r.ParseForm(); err != nil {
 
@@ -47,6 +49,29 @@ func IdentityExtractor(next http.Handler) http.Handler {
 
 			next.ServeHTTP(w, r.WithContext(ctx))
 			return
+		}
+
+		if path == "/web/refresh" || path == "/mobile/refresh" {
+
+			if CheckForJwt(r, "Refresh-Token") {
+
+				authHeader := r.Header.Get("Refresh-Token")
+
+				ctx := context.WithValue(r.Context(), enums.CtxJWTRefreshToken, authHeader)
+
+				next.ServeHTTP(w, r.WithContext(ctx))
+				return
+			}
+
+			if CheckForCookie(r, "refresh_token") {
+
+				refreshCookie, _ := r.Cookie("refresh_token")
+
+				ctx := context.WithValue(r.Context(), enums.CtxCookieRefreshToken, refreshCookie.Value)
+
+				next.ServeHTTP(w, r.WithContext(ctx))
+				return
+			}
 		}
 
 		if CheckForCookie(r, "session_token") {

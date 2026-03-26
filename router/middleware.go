@@ -8,7 +8,7 @@ import (
 	"github.com/go-chi/chi/v5/middleware"
 
 	"github.com/pfilip04/chai/config"
-	"github.com/pfilip04/chai/router/middlewares"
+	"github.com/pfilip04/chai/global/limitr"
 )
 
 func (app *App) NewChiRouter(routercfg config.RouterConfig, cors func(http.Handler) http.Handler,
@@ -35,7 +35,7 @@ func (app *App) NewChiRouter(routercfg config.RouterConfig, cors func(http.Handl
 
 	// Identity Extractor and Rate Limiter
 
-	router.Use(middlewares.IdentityExtractor)
+	router.Use(limitr.IdentityExtractor)
 	router.Use(limiter)
 
 	// Some middleware

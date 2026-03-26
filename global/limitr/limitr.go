@@ -1,4 +1,4 @@
-package middlewares
+package limitr
 
 import (
 	"net"
@@ -20,7 +20,7 @@ func NewRateLimiter(rps int, burst int, lifetime time.Duration) *RateLimiter {
 		burst:   burst,
 	}
 
-	go rl.cleanup(lifetime)
+	go rl.LimiterCleanup(lifetime)
 
 	return rl
 }

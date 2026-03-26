@@ -1,31 +1,13 @@
-package middlewares
+package loggr
 
 import (
 	"log/slog"
 	"net"
 	"net/http"
-	"os"
 	"time"
 
 	"github.com/go-chi/chi/v5/middleware"
 )
-
-//
-// A wrapper around the Response writer to capture the status code for logging
-
-type responseWriter struct {
-	http.ResponseWriter
-	status int
-}
-
-//
-// Overridding the WriteHeader func so it sets the code for logging before it writes
-
-func (rw *responseWriter) WriteHeader(code int) {
-
-	rw.status = code
-	rw.ResponseWriter.WriteHeader(code)
-}
 
 //
 // Logger configurations
@@ -54,16 +36,4 @@ func SlogMiddleware(logger *slog.Logger) func(http.Handler) http.Handler {
 			)
 		})
 	}
-}
-
-//
-// New Logger instance func
-
-func NewLogger() *slog.Logger {
-
-	handler := slog.NewJSONHandler(os.Stdout, &slog.HandlerOptions{
-		Level: slog.LevelInfo,
-	})
-
-	return slog.New(handler)
 }

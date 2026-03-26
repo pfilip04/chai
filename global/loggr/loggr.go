@@ -10,6 +10,9 @@ import (
 
 var Log = NewLogger(slog.LevelInfo)
 
+//
+// New Logger instance
+
 func NewLogger(level slog.Leveler) *slog.Logger {
 
 	handler := slog.NewJSONHandler(os.Stdout, &slog.HandlerOptions{
