@@ -23,11 +23,11 @@ But watch out for:
 
 ## Future improvements
 
-- Need /internal endpoint for /health and /metrics
 - Identifier in-memory caching and rate limiting per user
 - Global cleanup (in-memory and db)
 - Test package for automatic testing
 - Adding Redis
+- Need /metrics
 
 ## Run it
 
