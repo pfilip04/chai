@@ -9,5 +9,5 @@
 
     "handler-config": "config/handler-config.json",
 
-    "rate-limit-config": "router/rate-limit-config.json"
+    "rate-limit-config": "config/rate-limit-config.json"
 }
