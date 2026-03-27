@@ -158,7 +158,8 @@ func NewRouter(ctx context.Context, configurations string) (chi.Router, *pgxpool
 
 	// Limiter
 
-	limiter := limitr.NewRateLimiter(rlcfg.Rps, rlcfg.Burst, time.Duration(rlcfg.Lifetime)).InitRateLimiter()
+	l := limitr.NewRateLimiter(rlcfg.Rps, rlcfg.Burst, time.Duration(rlcfg.Lifetime), []byte(secret), hcfg.JWT.SpecialName)
+	limiter := l.InitRateLimiter()
 
 	//
 	// Router init

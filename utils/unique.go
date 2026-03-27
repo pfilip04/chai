@@ -19,14 +19,14 @@ func CheckUniqueUsername(r *http.Request, username string, db *pgxpool.Pool, tim
 
 	repo := repository.New(db)
 
-	count, err := repo.CountUsername(ctxA, username)
+	exists, err := repo.UsernameExists(ctxA, username)
 
 	if err != nil {
 
 		return false
 	}
 
-	return count == 0
+	return !exists
 }
 
 //
@@ -39,12 +39,12 @@ func CheckUniqueEmail(r *http.Request, email string, db *pgxpool.Pool, timeout t
 
 	repo := repository.New(db)
 
-	count, err := repo.CountEmail(ctxA, email)
+	exists, err := repo.EmailExists(ctxA, email)
 
 	if err != nil {
 
 		return false
 	}
 
-	return count == 0
+	return !exists
 }

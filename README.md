@@ -23,8 +23,7 @@ But watch out for:
 
 ## Future improvements
 
-- Identifier in-memory caching and rate limiting per user
-- Global cleanup (in-memory and db)
+- Using cache to rate limit by userID and DB cleanup
 - Test package for automatic testing
 - Adding Redis
 - Need /metrics

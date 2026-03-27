@@ -4,6 +4,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/pfilip04/chai/global/cache"
 	"golang.org/x/time/rate"
 )
 
@@ -19,8 +20,9 @@ type client struct {
 // Rate Limimter struct for a global mutex and a map of clients
 
 type RateLimiter struct {
-	mu      sync.RWMutex
-	clients map[string]*client
-	rps     int
-	burst   int
+	mu              sync.RWMutex
+	identifierCache *cache.Cache
+	clients         map[string]*client
+	rps             int
+	burst           int
 }

@@ -4,9 +4,13 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"time"
 
 	"github.com/google/uuid"
+	"github.com/jackc/pgx/v5/pgxpool"
+	"github.com/pfilip04/chai/database/postgresql/repository"
 	"github.com/pfilip04/chai/global/enums"
+	"github.com/pfilip04/chai/utils"
 )
 
 func NewCache(secret []byte, issuer string) *Cache {
@@ -16,7 +20,18 @@ func NewCache(secret []byte, issuer string) *Cache {
 		lookupMap: make(map[string]Identity),
 	}
 
+	go cache.cacheCleanup()
+
 	return cache
+}
+
+var cacheData = []string{
+	enums.CtxJWT,
+	enums.CtxUsernameEmail,
+	enums.CtxSessionToken,
+	enums.CtxJWTRefreshToken,
+	enums.CtxCookieRefreshToken,
+	enums.CtxMfaSessionToken,
 }
 
 func (ch *Cache) CheckLookup(data any, dataType string) (uuid.UUID, bool, error) {
@@ -40,129 +55,136 @@ func (ch *Cache) CheckLookup(data any, dataType string) (uuid.UUID, bool, error)
 	return user.UserID, false, nil
 }
 
+func (ch *Cache) AddIntoLookup(key string, id uuid.UUID, usernameEmail bool) {
+
+	exp := 10 * time.Minute
+
+	if usernameEmail {
+
+		exp = time.Hour
+	}
+
+	ch.mu.Lock()
+
+	ch.lookupMap[key] = Identity{
+		UserID:    id,
+		ExpiresAt: time.Now().UTC().Add(exp),
+	}
+
+	ch.mu.Unlock()
+}
+
 func (ch *Cache) GetCache(ctx context.Context) (uuid.UUID, string, error) {
 
-	jwt := ctx.Value(enums.CtxJWT)
+	for _, dataType := range cacheData {
 
-	if jwt != nil {
+		val := ctx.Value(dataType)
 
-		userID, miss, err := ch.CheckLookup(jwt, enums.CtxJWT)
+		if val != nil {
 
-		if err != nil {
+			userID, miss, err := ch.CheckLookup(val, dataType)
 
-			return uuid.Nil, "", err
+			if err != nil {
+
+				return uuid.Nil, "", err
+			}
+
+			if miss {
+
+				return uuid.Nil, dataType, nil
+			}
+
+			return userID, "", nil
 		}
-
-		if miss {
-
-			return uuid.Nil, enums.CtxJWT, nil
-		}
-
-		return userID, "", nil
-	}
-
-	usernameEmail := ctx.Value(enums.CtxUsernameEmail)
-
-	if usernameEmail != nil {
-
-		userID, miss, err := ch.CheckLookup(usernameEmail, enums.CtxUsernameEmail)
-
-		if err != nil {
-
-			return uuid.Nil, "", err
-		}
-
-		if miss {
-
-			return uuid.Nil, enums.CtxUsernameEmail, nil
-		}
-
-		return userID, "", nil
-	}
-
-	session := ctx.Value(enums.CtxSessionToken)
-
-	if session != nil {
-
-		userID, miss, err := ch.CheckLookup(session, enums.CtxSessionToken)
-
-		if err != nil {
-
-			return uuid.Nil, "", err
-		}
-
-		if miss {
-
-			return uuid.Nil, enums.CtxSessionToken, nil
-		}
-
-		return userID, "", nil
-	}
-
-	jwtRefresh := ctx.Value(enums.CtxJWTRefreshToken)
-
-	if jwtRefresh != nil {
-
-		userID, miss, err := ch.CheckLookup(jwtRefresh, enums.CtxJWTRefreshToken)
-
-		if err != nil {
-
-			return uuid.Nil, "", err
-		}
-
-		if miss {
-
-			return uuid.Nil, enums.CtxJWTRefreshToken, nil
-		}
-
-		return userID, "", nil
-	}
-
-	cookieRefresh := ctx.Value(enums.CtxCookieRefreshToken)
-
-	if cookieRefresh != nil {
-
-		userID, miss, err := ch.CheckLookup(cookieRefresh, enums.CtxCookieRefreshToken)
-
-		if err != nil {
-
-			return uuid.Nil, "", err
-		}
-
-		if miss {
-
-			return uuid.Nil, enums.CtxCookieRefreshToken, nil
-		}
-
-		return userID, "", nil
-	}
-
-	mfaSession := ctx.Value(enums.CtxMfaSessionToken)
-
-	if mfaSession != nil {
-
-		userID, miss, err := ch.CheckLookup(mfaSession, enums.CtxMfaSessionToken)
-
-		if err != nil {
-
-			return uuid.Nil, "", err
-		}
-
-		if miss {
-
-			return uuid.Nil, enums.CtxMfaSessionToken, nil
-		}
-
-		return userID, "", nil
 	}
 
 	return uuid.Nil, "", errors.New("Couldn't extract from context")
 }
 
-func SetCache(ctx context.Context, dataType string) error {
+func (ch *Cache) SetCache(ctx context.Context, db *pgxpool.Pool, timeout time.Duration, dataType string) (uuid.UUID, error) {
 
-	//
-	// DB queries for finding user data and inserting into cache
+	val, ok := ctx.Value(dataType).(string)
 
-	return nil
+	if !ok {
+
+		return uuid.Nil, fmt.Errorf("Error with Lookup on %s: %w", dataType, errors.New("Problem when reading context data"))
+	}
+
+	ctxA, cancelA := context.WithTimeout(ctx, timeout)
+	defer cancelA()
+
+	repo := repository.New(db)
+
+	switch dataType {
+
+	case enums.CtxJWT:
+
+		userID, _, err := utils.CheckJWT(val, ch.j_info.secret, ch.j_info.issuer)
+
+		if err != nil {
+
+			return uuid.Nil, fmt.Errorf("Problem with jwt claims: %w", err)
+		}
+
+		ch.AddIntoLookup(val, userID, false)
+
+		return userID, nil
+
+	case enums.CtxUsernameEmail:
+
+		user, err := repo.GetIdentifierByUsernameOrEmail(ctxA, val)
+
+		if err != nil {
+
+			return uuid.Nil, fmt.Errorf("Couldn't get username/email identifier from the db: %w", err)
+		}
+
+		ch.AddIntoLookup(user.Username, user.ID, true)
+		ch.AddIntoLookup(user.Email, user.ID, true)
+
+		return user.ID, nil
+
+	case enums.CtxSessionToken:
+
+		userID, err := repo.GetIdentifierBySession(ctxA, utils.HashToken(val))
+
+		if err != nil {
+
+			return uuid.Nil, fmt.Errorf("Couldn't get session token identifier from the db: %w", err)
+		}
+
+		ch.AddIntoLookup(val, userID, false)
+
+		return userID, nil
+
+	case enums.CtxJWTRefreshToken, enums.CtxCookieRefreshToken:
+
+		userID, err := repo.GetIdentifierByRefresh(ctxA, utils.HashToken(val))
+
+		if err != nil {
+
+			return uuid.Nil, fmt.Errorf("Couldn't get refresh token identifier from the db: %w", err)
+		}
+
+		ch.AddIntoLookup(val, userID, false)
+
+		return userID, nil
+
+	case enums.CtxMfaSessionToken:
+
+		userID, err := repo.GetIdentifierByMfaSession(ctxA, utils.HashToken(val))
+
+		if err != nil {
+
+			return uuid.Nil, fmt.Errorf("Couldn't get mfa session token identifier from the db: %w", err)
+		}
+
+		ch.AddIntoLookup(val, userID, false)
+
+		return userID, nil
+
+	default:
+
+		return uuid.Nil, errors.New("Something went wrong when checking data")
+	}
 }

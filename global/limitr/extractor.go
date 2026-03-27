@@ -21,6 +21,7 @@ func CheckForJwt(r *http.Request, name string) bool {
 }
 
 func IdentityExtractor(next http.Handler) http.Handler {
+
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 
 		path := r.URL.Path

@@ -5,6 +5,7 @@ import (
 	"net/http"
 	"time"
 
+	"github.com/pfilip04/chai/global/cache"
 	"github.com/pfilip04/chai/global/errs"
 	"golang.org/x/time/rate"
 )
@@ -12,15 +13,16 @@ import (
 //
 // Rate Limiter Constructor
 
-func NewRateLimiter(rps int, burst int, lifetime time.Duration) *RateLimiter {
+func NewRateLimiter(rps int, burst int, lifetime time.Duration, secret []byte, issuer string) *RateLimiter {
 
 	rl := &RateLimiter{
-		clients: make(map[string]*client),
-		rps:     rps,
-		burst:   burst,
+		clients:         make(map[string]*client),
+		identifierCache: cache.NewCache(secret, issuer),
+		rps:             rps,
+		burst:           burst,
 	}
 
-	go rl.LimiterCleanup(lifetime)
+	go rl.limiterCleanup(lifetime)
 
 	return rl
 }

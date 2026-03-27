@@ -2,7 +2,7 @@ package limitr
 
 import "time"
 
-func (rl *RateLimiter) LimiterCleanup(lifetime time.Duration) {
+func (rl *RateLimiter) limiterCleanup(lifetime time.Duration) {
 
 	for {
 
