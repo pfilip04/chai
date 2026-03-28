@@ -59,7 +59,7 @@ func (app *App) NewChiRouter(routercfg config.RouterConfig, cors func(http.Handl
 
 		r.Post("/promote", app.Cookie.AdminPromote)
 		r.Post("/suspend", app.Cookie.AdminSuspend)
-		r.Post("/delete", app.Cookie.Logout)
+		r.Post("/delete", app.Cookie.AdminDelete)
 	})
 
 	// Internal Apis

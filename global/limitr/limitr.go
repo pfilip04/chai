@@ -5,6 +5,7 @@ import (
 	"net/http"
 	"time"
 
+	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/pfilip04/chai/config"
 	"github.com/pfilip04/chai/global/cache"
@@ -89,6 +90,14 @@ func (rl *RateLimiter) InitRateLimiter() func(http.Handler) http.Handler {
 					errs.WriteError(w, "rate-limiter", err, "Problem when setting cache", errs.ServerError)
 					return
 				}
+			}
+
+			// Skiping unidentified users for identifier limiting
+
+			if userID == uuid.Nil {
+
+				next.ServeHTTP(w, r)
+				return
 			}
 
 			userIdStr := userID.String()
