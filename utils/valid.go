@@ -185,7 +185,7 @@ func IsValidStatus(r *http.Request, userId uuid.UUID, status string, suspAt time
 	case "deleted":
 
 		elapsed := time.Since(delAt)
-		window := 30 * 24 * time.Hour
+		window := 720 * time.Hour
 
 		if elapsed <= window {
 

@@ -2,7 +2,7 @@ package limitr
 
 import "time"
 
-func (rl *RateLimiter) limiterCleanup(lifetime time.Duration) {
+func (rl *RateLimiter) limiterCleanup(ipLifetime time.Duration, identifierLifetime time.Duration) {
 
 	for {
 
@@ -10,11 +10,23 @@ func (rl *RateLimiter) limiterCleanup(lifetime time.Duration) {
 
 		rl.mu.Lock()
 
-		for ip, c := range rl.clients {
+		// Cleaning IP clients
 
-			if time.Since(c.lastSeenAt) > lifetime {
+		for ip, c := range rl.ipClients {
 
-				delete(rl.clients, ip)
+			if time.Since(c.lastSeenAt) > ipLifetime {
+
+				delete(rl.ipClients, ip)
+			}
+		}
+
+		// Cleaning UserID clients
+
+		for userId, c := range rl.userClients {
+
+			if time.Since(c.lastSeenAt) > identifierLifetime {
+
+				delete(rl.userClients, userId)
 			}
 		}
 

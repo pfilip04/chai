@@ -10,7 +10,7 @@ Authentication API written in Go using Chi for a PostgreSQL database.
 
 ## Notice
 
-### Tested with Postman  
+### Tested with Postman
 But watch out for:
 
 - Postgres version
@@ -23,10 +23,9 @@ But watch out for:
 
 ## Future improvements
 
-- Using cache to rate limit by userID and DB cleanup
 - Test package for automatic testing
 - Adding Redis
-- Need /metrics
+- Endpoint /metrics
 
 ## Run it
 

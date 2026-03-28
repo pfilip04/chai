@@ -45,9 +45,13 @@ type MailConfig struct {
 // Rate Limiting Config File
 
 type RateLimitConfig struct {
-	Rps      int      `json:"rps"`               // RATE PER SECOND (HOW MANY TOKENS ARE ADDED TO THE BUCKET EVERY SECOND - REFILL RATE)
-	Burst    int      `json:"burst"`             // BUCKET CAPACITY (MAXIMUM NUMBER OF TOKENS THE BUCKET CAN HOLD AT ANY GIVEN MOMENT - MAX)
-	Lifetime Duration `json:"ip-cache-lifetime"` // HOW LONG DOES IP GET CACHED IN MEMORY FOR RATE LIMIT TRACKING
+	IpRps                   int      `json:"ip-rps"`                    // RATE PER SECOND (TOKENS ADDED TO THE BUCKET EVERY SECOND - REFILL RATE) IP
+	IpBurst                 int      `json:"ip-burst"`                  // BUCKET CAPACITY (MAXIMUM TOKENS THE BUCKET CAN HOLD AT ANY MOMENT - MAX) IP
+	UserIdRps               int      `json:"userid-rps"`                // RATE PER SECOND (TOKENS ADDED TO THE BUCKET EVERY SECOND - REFILL RATE) USERID
+	UserIdBurst             int      `json:"userid-burst"`              // BUCKET CAPACITY (MAXIMUM TOKENS THE BUCKET CAN HOLD AT ANY MOMENT - MAX) USERID
+	QueryTimeout            Duration `json:"timeout"`                   // HOW LONG CAN REQUEST RUN FOR (LIMITING RESOURCE USAGE)
+	IpCacheLifetime         Duration `json:"ip-cache-lifetime"`         // HOW LONG DOES IP GET CACHED IN MEMORY FOR RATE LIMIT TRACKING
+	IdentifierCacheLifetime Duration `json:"identifier-cache-lifetime"` // HOW LONG DOES USER ID GET CACHED IN MEMORY FOR RATE LIMIT TRACKING
 }
 
 //

@@ -1,7 +1,15 @@
 {
-    "rps": 10,
+    "ip-rps": 10,
 
-    "burst": 20,
+    "ip-burst": 20,
 
-    "ip-cache-lifetime": "10m"
+    "userid-rps": 15,
+
+    "userid-burst": 30,
+
+    "timeout": "3s",
+
+    "ip-cache-lifetime": "10m",
+
+    "identifier-cache-lifetime": "1h"
 }

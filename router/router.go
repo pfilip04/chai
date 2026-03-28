@@ -7,12 +7,12 @@ import (
 	"log"
 	"log/slog"
 	"os"
-	"time"
 
 	"github.com/go-chi/chi/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
 
 	"github.com/pfilip04/chai/config"
+	"github.com/pfilip04/chai/global/cleanup"
 	"github.com/pfilip04/chai/global/limitr"
 	"github.com/pfilip04/chai/global/loggr"
 	"github.com/pfilip04/chai/mailing"
@@ -158,13 +158,17 @@ func NewRouter(ctx context.Context, configurations string) (chi.Router, *pgxpool
 
 	// Limiter
 
-	l := limitr.NewRateLimiter(rlcfg.Rps, rlcfg.Burst, time.Duration(rlcfg.Lifetime), []byte(secret), hcfg.JWT.SpecialName)
+	l := limitr.NewRateLimiter(rlcfg, dbpool, []byte(secret), hcfg.JWT.SpecialName)
 	limiter := l.InitRateLimiter()
 
 	//
 	// Router init
 
 	router := app.NewChiRouter(hcfg.Router, cors, logger, limiter)
+
+	// Global Cleanup
+
+	go cleanup.GlobalCleanup(ctx, dbpool)
 
 	return router, dbpool, nil
 }

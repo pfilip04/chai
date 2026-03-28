@@ -5,6 +5,8 @@ import (
 	"net/http"
 	"time"
 
+	"github.com/jackc/pgx/v5/pgxpool"
+	"github.com/pfilip04/chai/config"
 	"github.com/pfilip04/chai/global/cache"
 	"github.com/pfilip04/chai/global/errs"
 	"golang.org/x/time/rate"
@@ -13,16 +15,21 @@ import (
 //
 // Rate Limiter Constructor
 
-func NewRateLimiter(rps int, burst int, lifetime time.Duration, secret []byte, issuer string) *RateLimiter {
+func NewRateLimiter(rlcfg config.RateLimitConfig, db *pgxpool.Pool, secret []byte, issuer string) *RateLimiter {
 
 	rl := &RateLimiter{
-		clients:         make(map[string]*client),
+		db:              db,
+		timeout:         time.Duration(rlcfg.QueryTimeout),
+		ipClients:       make(map[string]*client),
+		userClients:     make(map[string]*client),
 		identifierCache: cache.NewCache(secret, issuer),
-		rps:             rps,
-		burst:           burst,
+		ipRps:           rlcfg.IpRps,
+		ipBurst:         rlcfg.IpBurst,
+		userIdRps:       rlcfg.UserIdRps,
+		userIdBurst:     rlcfg.UserIdBurst,
 	}
 
-	go rl.limiterCleanup(lifetime)
+	go rl.limiterCleanup(time.Duration(rlcfg.IpCacheLifetime), time.Duration(rlcfg.IdentifierCacheLifetime))
 
 	return rl
 }
@@ -39,37 +46,70 @@ func (rl *RateLimiter) InitRateLimiter() func(http.Handler) http.Handler {
 
 			if err != nil {
 
-				errs.WriteError(w, "rate limiter", err, "Problem when extracting ip", errs.ServerError)
+				errs.WriteError(w, "rate-limiter", err, "Problem when extracting ip", errs.ServerError)
 				return
 			}
 
-			rl.mu.RLock()
-			c, ok := rl.clients[ip]
-			rl.mu.RUnlock()
+			// Limiter limit and get client
 
-			if !ok {
+			ipClient := rl.getLimiter(rl.ipClients, ip, rl.ipRps, rl.ipBurst)
 
-				rl.mu.Lock()
-				c, ok = rl.clients[ip]
-				if !ok {
-
-					c = &client{
-						limiter: rate.NewLimiter(rate.Limit(rl.rps), rl.burst),
-					}
-					rl.clients[ip] = c
-				}
-				rl.mu.Unlock()
-			}
+			// Set last seen
 
 			rl.mu.Lock()
-			c.lastSeenAt = time.Now().UTC()
+
+			ipClient.lastSeenAt = time.Now().UTC()
+
 			rl.mu.Unlock()
 
 			// Check the limiter status
 
-			if !c.limiter.Allow() {
+			if !ipClient.limiter.Allow() {
 
-				errs.WriteError(w, "rate limiter", errs.TooManyRequestsError.Err, "Too many requests", errs.TooManyRequestsError)
+				errs.WriteError(w, "rate-limiter", errs.TooManyRequestsError.Err, "Too many requests", errs.TooManyRequestsError)
+				return
+			}
+
+			// IDENTIFIER
+
+			userID, miss, err := rl.identifierCache.GetCache(r.Context())
+
+			if err != nil {
+
+				errs.WriteError(w, "rate-limiter", err, "Problem when getting cache", errs.ServerError)
+				return
+			}
+
+			if miss != "" {
+
+				userID, err = rl.identifierCache.SetCache(r.Context(), rl.db, rl.timeout, miss)
+
+				if err != nil {
+
+					errs.WriteError(w, "rate-limiter", err, "Problem when setting cache", errs.ServerError)
+					return
+				}
+			}
+
+			userIdStr := userID.String()
+
+			// Limiter limit and get client
+
+			userClient := rl.getLimiter(rl.userClients, userIdStr, rl.userIdRps, rl.userIdBurst)
+
+			// Set last seen
+
+			rl.mu.Lock()
+
+			userClient.lastSeenAt = time.Now().UTC()
+
+			rl.mu.Unlock()
+
+			// Check the limiter status
+
+			if !userClient.limiter.Allow() {
+
+				errs.WriteError(w, "rate-limiter", errs.TooManyRequestsError.Err, "Too many requests (USER)", errs.TooManyRequestsError)
 				return
 			}
 
@@ -80,4 +120,37 @@ func (rl *RateLimiter) InitRateLimiter() func(http.Handler) http.Handler {
 
 		return http.HandlerFunc(fn)
 	}
+}
+
+// Limiting in the map according to forwarded parameter
+
+func (rl *RateLimiter) getLimiter(limiters map[string]*client, parameter string, rps int, burst int) *client {
+
+	rl.mu.RLock()
+
+	c, ok := limiters[parameter]
+
+	rl.mu.RUnlock()
+
+	if ok {
+
+		return c
+	}
+
+	rl.mu.Lock()
+
+	c, ok = limiters[parameter]
+
+	if !ok {
+
+		c = &client{
+			limiter: rate.NewLimiter(rate.Limit(rps), burst),
+		}
+
+		limiters[parameter] = c
+	}
+
+	rl.mu.Unlock()
+
+	return c
 }

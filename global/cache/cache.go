@@ -57,7 +57,7 @@ func (ch *Cache) CheckLookup(data any, dataType string) (uuid.UUID, bool, error)
 
 func (ch *Cache) AddIntoLookup(key string, id uuid.UUID, usernameEmail bool) {
 
-	exp := 10 * time.Minute
+	exp := 30 * time.Minute
 
 	if usernameEmail {
 
